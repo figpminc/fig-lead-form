@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get a Free Property Management Quote — FIG Property Management</title>
+  <style>
+    :root {
+      --mint: #cfddd8;
+      --off-white: #eff1eb;
+      --dark-green: #2e3227;
+      --sage: #869f96;
+      --cream: #faf6ef;
+      --teal: #074650;
+      --teal-dark: #053840;
+      --teal-light: #e4edef;
+      --warm-gray: #b5af9f;
+      --text: #2e3227;
+      --border: #cfddd8;
+      --white: #eff1eb;
+      --error: #a33;
+      --error-bg: #fff5f5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Nav */
+    .nav { background: var(--teal); padding: .85rem 1.5rem; }
+    .nav-inner { max-width: 620px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .nav-brand { font-family: Georgia, serif; font-size: 15px; color: var(--off-white); letter-spacing: .04em; }
+    .nav-link { color: rgba(207,221,216,.8); font-size: 12px; font-weight: 500; text-decoration: none; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; padding: 6px 12px; }
+    .nav-link:hover { background: rgba(255,255,255,.1); }
+
+    /* Page */
+    .page { max-width: 620px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+
+    /* Header */
+    .header { text-align: center; margin-bottom: 2rem; }
+    .header h1 { font-family: Georgia, serif; font-size: 26px; font-weight: 400; color: var(--teal); margin-bottom: .5rem; }
+    .header p { font-size: 15px; color: var(--sage); line-height: 1.6; }
+
+    /* Trust bar */
+    .trust { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .trust-item { font-size: 12px; color: var(--sage); display: flex; align-items: center; gap: 5px; }
+    .trust-item::before { content: '✓'; color: var(--teal); font-weight: 700; }
+
+    /* Card */
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(7,70,80,.06); }
+    .card-header { background: var(--teal); padding: 1.25rem 1.75rem; }
+    .card-header h2 { font-family: Georgia, serif; font-size: 18px; font-weight: 400; color: var(--off-white); }
+    .card-header p { font-size: 13px; color: rgba(207,221,216,.75); margin-top: 3px; }
+    .card-body { padding: 1.75rem; }
+
+    /* Form */
+    .field { margin-bottom: 1.25rem; }
+    .field label { display: block; font-size: 11px; font-weight: 600; color: var(--sage); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
+    .field label .req { color: var(--teal); }
+    .field input, .field select {
+      width: 100%; padding: 11px 14px;
+      background: var(--cream); border: 1px solid var(--border);
+      border-radius: 7px; font-size: 15px; color: var(--text);
+      font-family: inherit; outline: none; transition: border-color .15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .field input:focus, .field select:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(7,70,80,.1); }
+    .field input.err, .field select.err { border-color: var(--error); }
+    .field-err { font-size: 12px; color: var(--error); margin-top: 4px; display: none; }
+    .field-err.show { display: block; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+
+    /* Select arrow */
+    .select-wrap { position: relative; }
+    .select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--sage); pointer-events: none; font-size: 13px; }
+
+    /* Honeypot */
+    .hp { position: absolute; left: -9999px; }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%; padding: 14px;
+      background: var(--teal); color: var(--off-white);
+      border: none; border-radius: 7px;
+      font-size: 15px; font-weight: 500; font-family: inherit;
+      cursor: pointer; letter-spacing: .02em;
+      transition: background .15s;
+      margin-top: .5rem;
+    }
+    .submit-btn:hover { background: var(--teal-dark); }
+    .submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .form-note { font-size: 11px; color: var(--warm-gray); text-align: center; margin-top: .85rem; line-height: 1.6; }
+
+    /* States */
+    .form-error { background: var(--error-bg); border: 1px solid #feb2b2; border-radius: 7px; padding: .85rem 1rem; font-size: 13px; color: var(--error); margin-bottom: 1rem; display: none; }
+    .form-error.show { display: block; }
+
+    .success { display: none; text-align: center; padding: 2.5rem 1.75rem; }
+    .success.show { display: block; }
+    .success-icon { font-size: 44px; margin-bottom: 1rem; }
+    .success h3 { font-family: Georgia, serif; font-size: 22px; font-weight: 400; color: var(--teal); margin-bottom: .5rem; }
+    .success p { font-size: 14px; color: var(--sage); line-height: 1.7; margin-bottom: 1.25rem; }
+    .success-btn { display: inline-block; background: var(--teal); color: var(--off-white); padding: 11px 24px; border-radius: 7px; font-size: 13px; font-weight: 500; text-decoration: none; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-brand">FIG Property Management</span>
+    <a href="https://figpminc.com" target="_blank" class="nav-link">← Back to FIG Website</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="header">
+    <h1>Get a Free Management Quote</h1>
+    <p>Tell us a little about your property and we'll be in touch with a custom proposal — usually within one business day.</p>
+  </div>
+
+  <div class="trust">
+    <span class="trust-item">No obligation</span>
+    <span class="trust-item">Knoxville's trusted PM team</span>
+    <span class="trust-item">Response within 24 hours</span>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>Owner Inquiry</h2>
+      <p>All fields are required</p>
+    </div>
+    <div class="card-body">
+
+      <div class="form-error" id="form-error">Something went wrong — please try again or call us at (865) 326-6333.</div>
+
+      <form id="lead-form" novalidate>
+        <!-- Honeypot -->
+        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off">
+
+        <div class="field-row">
+          <div class="field">
+            <label>First name <span class="req">*</span></label>
+            <input type="text" id="firstName" placeholder="Jane" autocomplete="given-name">
+            <div class="field-err" id="firstName-err">Please enter your first name.</div>
+          </div>
+          <div class="field">
+            <label>Last name <span class="req">*</span></label>
+            <input type="text" id="lastName" placeholder="Smith" autocomplete="family-name">
+            <div class="field-err" id="lastName-err">Please enter your last name.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Email address <span class="req">*</span></label>
+          <input type="email" id="email" placeholder="jane@email.com" autocomplete="email">
+          <div class="field-err" id="email-err">Please enter a valid email address.</div>
+        </div>
+
+        <div class="field">
+          <label>Phone number <span class="req">*</span></label>
+          <input type="tel" id="phone" placeholder="(865) 555-0123" autocomplete="tel">
+          <div class="field-err" id="phone-err">Please enter a valid phone number.</div>
+        </div>
+
+        <div class="field">
+          <label>Number of units <span class="req">*</span></label>
+          <div class="select-wrap">
+            <select id="units">
+              <option value="">Select number of units</option>
+              <option value="1">1 unit</option>
+              <option value="2-5">2–5 units</option>
+              <option value="6-10">6–10 units</option>
+              <option value="11-20">11–20 units</option>
+              <option value="21+">21+ units</option>
+            </select>
+          </div>
+          <div class="field-err" id="units-err">Please select your number of units.</div>
+        </div>
+
+        <hr class="divider">
+
+        <button type="submit" class="submit-btn" id="submit-btn">Get My Free Quote</button>
+        <p class="form-note">By submitting this form you agree to be contacted by FIG Property Management. We never sell your information.</p>
+      </form>
+
+      <div class="success" id="success">
+        <div class="success-icon">🏠</div>
+        <h3>We've got your info!</h3>
+        <p>Thanks for reaching out. A member of the FIG team will be in touch within one business day to discuss your property and put together a custom proposal.</p>
+        <a href="https://figpminc.com" class="success-btn">Back to FIG Website</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('lead-form');
+  const btn  = document.getElementById('submit-btn');
+
+  function val(id) { return document.getElementById(id).value.trim(); }
+  function showErr(id, show) {
+    document.getElementById(id).classList[show ? 'add' : 'remove']('err');
+    document.getElementById(id + '-err').classList[show ? 'add' : 'remove']('show');
+  }
+
+  function normalizePhone(p) {
+    const digits = p.replace(/\D/g, '');
+    if (digits.length === 10) return '+1' + digits;
+    if (digits.length === 11 && digits[0] === '1') return '+' + digits;
+    return null;
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Honeypot
+    if (document.querySelector('input[name="website"]').value) return;
+
+    const firstName = val('firstName');
+    const lastName  = val('lastName');
+    const email     = val('email');
+    const phone     = val('phone');
+    const units     = val('units');
+
+    let valid = true;
+    if (!firstName) { showErr('firstName', true); valid = false; } else showErr('firstName', false);
+    if (!lastName)  { showErr('lastName',  true); valid = false; } else showErr('lastName',  false);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('email', true); valid = false; } else showErr('email', false);
+    if (!normalizePhone(phone)) { showErr('phone', true); valid = false; } else showErr('phone', false);
+    if (!units) { showErr('units', true); valid = false; } else showErr('units', false);
+    if (!valid) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    document.getElementById('form-error').classList.remove('show');
+
+    try {
+      const res = await fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName, email, phone, units })
+      });
+      if (res.ok) {
+        form.style.display = 'none';
+        document.getElementById('success').classList.add('show');
+      } else {
+        throw new Error('Server error');
+      }
+    } catch(err) {
+      document.getElementById('form-error').classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Get My Free Quote';
+    }
+  });
+</script>
+</body>
+</html>
