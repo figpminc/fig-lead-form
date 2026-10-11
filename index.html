@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=3804c501-a06a-43a9-b4eb-7ad85974713e
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Get a Free Property Management Quote — FIG Property Management</title>
   <style>
@@ -106,6 +109,12 @@
     .success p { font-size: 14px; color: var(--sage); line-height: 1.7; margin-bottom: 1.25rem; }
     .success-btn { display: inline-block; background: var(--teal); color: var(--off-white); padding: 11px 24px; border-radius: 7px; font-size: 13px; font-weight: 500; text-decoration: none; }
 
+    /* SMS consent */
+    .consent { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 1.25rem; }
+    .consent input { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--teal); }
+    .consent label { font-size: 12px; color: var(--text); line-height: 1.55; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    .consent a, .form-note a { color: var(--teal); }
+
     /* Divider */
     .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
   </style>
@@ -134,7 +143,7 @@
   <div class="card">
     <div class="card-header">
       <h2>Owner Inquiry</h2>
-      <p>All fields are required</p>
+      <p>Fields marked * are required</p>
     </div>
     <div class="card-body">
 
@@ -186,8 +195,13 @@
 
         <hr class="divider">
 
+        <div class="consent">
+          <input type="checkbox" id="smsConsent">
+          <label for="smsConsent">Optional: I agree to receive text messages from Freedom Investment Group, Inc. dba FIG Property Management about my inquiry, scheduling, and FIG's property management and leasing services. Up to 6 msgs/month. Msg &amp; data rates may apply. Reply HELP for help, STOP to opt out. Consent is not a condition of service. See our <a href="https://figpminc.com/privacy-policy%2Fterms" target="_blank">Privacy Policy and Terms</a>.</label>
+        </div>
+
         <button type="submit" class="submit-btn" id="submit-btn">Get My Free Quote</button>
-        <p class="form-note">By submitting this form you agree to be contacted by FIG Property Management. We never sell your information.</p>
+        <p class="form-note">By submitting this form you agree to be contacted by FIG Property Management by phone or email about your inquiry. We never sell your information. <a href="https://figpminc.com/privacy-policy%2Fterms" target="_blank">Privacy Policy and Terms</a></p>
       </form>
 
       <div class="success" id="success">
@@ -229,6 +243,7 @@
     const email     = val('email');
     const phone     = val('phone');
     const units     = val('units');
+    const smsConsent = document.getElementById('smsConsent').checked;
 
     let valid = true;
     if (!firstName) { showErr('firstName', true); valid = false; } else showErr('firstName', false);
@@ -246,7 +261,7 @@
       const res = await fetch('/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, phone, units })
+        body: JSON.stringify({ firstName, lastName, email, phone, units, smsConsent })
       });
       if (res.ok) {
         form.style.display = 'none';
