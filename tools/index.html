@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=33fe7477-cca4-4383-a17f-701adad9ae55
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Tools — FIG Property Management</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #faf6ef; padding: 0; }
+    :root {
+      --mint: #cfddd8;
+      --off-white: #eff1eb;
+      --dark-green: #2e3227;
+      --sage: #869f96;
+      --cream: #faf6ef;
+      --teal: #074650;
+      --warm-gray: #b5af9f;
+      --text: #2e3227;
+      --muted: #869f96;
+      --border: #cfddd8;
+      --bg: #faf6ef;
+      --white: #eff1eb;
+    }
+    .wrapper { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .fw { background: var(--white); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; color: var(--text); }
+    .fh { background: var(--teal); padding: 1.75rem 2rem 1.5rem; text-align: center; }
+    .fh h2 { font-family: Georgia, serif; font-size: 26px; font-weight: 400; color: var(--off-white); letter-spacing: .04em; }
+    .fh p { font-size: 14px; color: rgba(207,221,216,.75); margin-top: 6px; }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--cream); overflow-x: auto; }
+    .tab { padding: .85rem 1.25rem; font-size: 13px; font-weight: 500; color: var(--warm-gray); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; transition: color .15s; }
+    .tab.on { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab:hover { color: var(--sage); }
+    .panel { display: none; padding: 2rem; background: var(--white); }
+    .panel.on { display: block; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 640px) { .two { grid-template-columns: 1fr; } .rgrid { grid-template-columns: 1fr 1fr !important; } .lf2 { grid-template-columns: 1fr !important; } .cc { grid-template-columns: 1fr !important; } }
+    .fg { margin-bottom: 1.1rem; }
+    .fl { font-size: 11px; font-weight: 600; color: var(--sage); letter-spacing: .08em; margin-bottom: 5px; display: block; text-transform: uppercase; }
+    .fr { display: flex; align-items: center; gap: 8px; }
+    .pfx { font-size: 14px; color: var(--warm-gray); }
+    input[type=number] { background: var(--cream); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 12px; font-size: 14px; width: 100%; outline: none; font-family: inherit; }
+    input[type=number]:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(7,70,80,.1); }
+    input[type=range] { background: transparent; border: none; cursor: pointer; flex: 1; accent-color: var(--teal); }
+    .rout { font-size: 13px; color: var(--teal); font-weight: 600; min-width: 44px; }
+    .sl { font-size: 11px; font-weight: 600; color: var(--sage); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .85rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border); }
+    .rgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 1rem; }
+    .rc { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; }
+    .rc.ac { border-color: var(--teal); background: var(--mint); }
+    .rl { font-size: 11px; color: var(--warm-gray); margin-bottom: 4px; }
+    .rv { font-family: Georgia, serif; font-size: 20px; font-weight: 400; color: var(--text); }
+    .rc.ac .rv { color: var(--teal); }
+    .rs { font-size: 11px; color: var(--warm-gray); margin-top: 2px; }
+    .fee-card { background: var(--cream); border: 1px solid var(--border); border-left: 3px solid var(--teal); border-radius: 6px; padding: .85rem 1rem; margin-bottom: 8px; }
+    .fee-card .rl { color: var(--teal); font-weight: 600; font-size: 11px; letter-spacing: .04em; }
+    .fee-card .rv { font-size: 14px; color: var(--text); font-family: inherit; }
+    .fee-card .rs { color: var(--warm-gray); }
+    .div { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .cc { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .ccol { background: var(--cream); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .ccol.fig { border-color: var(--teal); background: var(--mint); }
+    .ct { font-size: 12px; font-weight: 600; margin-bottom: 1rem; color: var(--warm-gray); text-transform: uppercase; letter-spacing: .08em; }
+    .ccol.fig .ct { color: var(--teal); }
+    .crow { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px solid rgba(46,50,39,.06); font-size: 13px; }
+    .crow:last-child { border-bottom: none; }
+    .crow .lb { color: var(--sage); }
+    .crow .vl { font-weight: 500; color: var(--text); }
+    .tot { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; }
+    .sav { margin-top: 1rem; background: var(--mint); border: 1px solid var(--teal); border-radius: 8px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+    .sav .slb { font-size: 13px; color: var(--text); }
+    .sav .svl { font-family: Georgia, serif; font-size: 22px; color: var(--teal); }
+    .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: var(--mint); color: var(--teal); letter-spacing: .06em; margin-left: 8px; border: 1px solid var(--sage); }
+    .cta-row { margin-top: 1.5rem; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 11px 22px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; letter-spacing: .02em; font-family: inherit; }
+    .btn-p { background: var(--teal); color: var(--off-white); }
+    .btn-p:hover { background: #0a5a67; }
+    .btn-s { background: var(--white); border: 1px solid var(--border); color: var(--text); }
+    .btn-s:hover { background: var(--cream); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .note { font-size: 12px; color: var(--warm-gray); line-height: 1.7; margin-top: 10px; }
+
+    /* Modal overlay */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(46,50,39,.55); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--white); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .mh { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--teal); border-radius: 12px 12px 0 0; position: sticky; top: 0; }
+    .mh h3 { font-family: Georgia, serif; font-size: 17px; font-weight: 400; color: var(--off-white); }
+    .mclose { background: none; border: none; color: var(--mint); font-size: 22px; cursor: pointer; line-height: 1; }
+    .mb { padding: 1.5rem; }
+    .lform { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .lform h4 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: .35rem; }
+    .lform p { font-size: 12px; color: var(--warm-gray); margin-bottom: 1rem; }
+    .lf2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .linput { display: flex; flex-direction: column; gap: 5px; }
+    .linput label { font-size: 11px; color: var(--sage); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .linput input[type=text] { background: var(--white); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 9px 12px; font-size: 14px; outline: none; width: 100%; font-family: inherit; }
+    .linput input[type=text]:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(7,70,80,.1); }
+    .lerr { font-size: 12px; color: #a33; margin-top: 8px; display: none; }
+    .status-msg { font-size: 12px; margin-top: 8px; padding: 8px 12px; border-radius: 6px; display: none; }
+    .status-msg.ok { background: var(--mint); border: 1px solid var(--teal); color: var(--teal); }
+    .status-msg.err { background: #fff5f5; border: 1px solid #feb2b2; color: #a33; }
+
+    /* Report */
+    .report { display: none; }
+    .report.show { display: block; }
+    .rept-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--mint); }
+    .rept-brand { font-family: Georgia, serif; font-size: 16px; color: var(--teal); }
+    .rept-date { font-size: 11px; color: var(--warm-gray); margin-top: 2px; }
+    .rept-sub { font-size: 13px; color: var(--sage); margin-bottom: 1.5rem; }
+    .rsect { margin-bottom: 1.5rem; }
+    .rsect-title { font-size: 11px; font-weight: 600; color: var(--teal); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid var(--mint); }
+    .rrow { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(0,0,0,.04); }
+    .rrow:last-child { border-bottom: none; }
+    .rrow .rk { color: var(--sage); }
+    .rrow .rv2 { font-weight: 500; color: var(--text); }
+    .rrow.rtotal { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 8px; font-size: 14px; font-weight: 600; }
+    .rrow.rtotal .rv2 { color: var(--teal); }
+    .savings-box { background: var(--mint); border: 1px solid var(--teal); border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; display: flex; justify-content: space-between; align-items: center; }
+    .savings-box .sk { font-size: 13px; color: var(--text); }
+    .savings-box .sv { font-family: Georgia, serif; font-size: 22px; color: var(--teal); }
+    .rept-footer { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 11px; color: var(--warm-gray); line-height: 1.8; }
+    .lead-note { font-size: 12px; color: var(--teal); margin-top: 8px; }
+
+
+    /* ── Top nav ── */
+    .top-nav { background: var(--teal); padding: .85rem 1.5rem; position: sticky; top: 0; z-index: 50; }
+    .nav-inner { max-width: 860px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .nav-brand { font-family: Georgia, serif; font-size: 15px; color: var(--off-white); letter-spacing: .04em; }
+    .nav-btn { background: rgba(255,255,255,.15); color: var(--off-white); border: 1px solid rgba(255,255,255,.3); border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 500; text-decoration: none; white-space: nowrap; transition: background .15s; font-family: -apple-system, sans-serif; }
+    .nav-btn:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .wrapper { padding: 0 0 2rem; }
+      .fw { border-radius: 0; border-left: none; border-right: none; }
+      .fh { padding: 1.25rem 1rem 1rem; }
+      .fh h2 { font-size: 20px; }
+      .fh p { font-size: 13px; }
+      .tabs { padding: 0; }
+      .tab { padding: .7rem .85rem; font-size: 12px; }
+      .panel { padding: 1.25rem 1rem; }
+      .two { grid-template-columns: 1fr; gap: 1.25rem; }
+      .rgrid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .rgrid .rc:last-child:nth-child(odd) { grid-column: span 2; }
+      .rv { font-size: 17px; }
+      .cc { grid-template-columns: 1fr; }
+      .sav { flex-direction: column; gap: .5rem; align-items: flex-start; }
+      .svl { font-size: 26px; }
+      .cta-row { flex-direction: column; }
+      .btn { width: 100%; text-align: center; padding: 13px; }
+      .lf2 { grid-template-columns: 1fr; }
+      .modal { border-radius: 12px 12px 0 0; }
+      .modal-overlay { align-items: flex-end; padding: 0; }
+      .mb { padding: 1.25rem 1rem; }
+      .mh { border-radius: 12px 12px 0 0; }
+      .nav-brand { font-size: 13px; }
+      .nav-btn { font-size: 11px; padding: 6px 10px; }
+      .rept-header { flex-direction: column; gap: .75rem; }
+      .rept-header .btn { width: auto; }
+      .savings-box { flex-direction: column; gap: .5rem; }
+      .fee-card .rv { font-size: 13px; }
+    }
+    @media (max-width: 380px) {
+      .tab { padding: .65rem .6rem; font-size: 11px; }
+      .badge { display: none; }
+    }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .fw { border: none; border-radius: 0; }
+      .fh, .tabs, .panel, .modal-overlay { display: none !important; }
+      .modal-overlay { display: block !important; position: static; background: none; padding: 0; }
+      .modal { box-shadow: none; border: none; max-height: none; }
+      .mh, .lform, .no-print { display: none !important; }
+      .report { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="nav-inner">
+    <span class="nav-brand">Owner Tools</span>
+    <a href="https://figpminc.com" target="_blank" class="nav-btn">
+      ← Back to FIG Website
+    </a>
+  </div>
+</nav>
+
+<div class="wrapper">
+
+<!-- ============================================================
+  FIG PROPERTY MANAGEMENT — OWNER TOOLS
+  Leads go to Blanket through the server function /.netlify/functions/tools-lead
+  (no API keys in this page).
+============================================================ -->
+<script>
+const CONNECT_URL = 'https://figpminc.com/book';
+
+async function postLead(name, email, summary) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch('/.netlify/functions/tools-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, summary }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return r.ok;
+  } catch(e) { return false; }
+}
+</script>
+
+<div class="fw">
+  <div class="fh">
+    <h2>Owner Tools</h2>
+    <p>Understand your costs, analyze your rental, and see what professional management is worth.</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" onclick="sw('pricing')">Pricing Estimate</div>
+    <div class="tab" onclick="sw('selfmgmt')">Self-Management Cost</div>
+    <div class="tab" onclick="sw('compare')">Compare <span class="badge">SMART</span></div>
+    <div class="tab" onclick="sw('analysis')">Rental Analysis</div>
+  </div>
+
+  <!-- PRICING -->
+  <div id="p-pricing" class="panel on">
+    <div class="two">
+      <div>
+        <div class="sl">Your portfolio</div>
+        <div class="fg"><span class="fl">Number of units</span><div class="fr"><input type="number" id="p-units" value="5" min="1" oninput="cp()"></div></div>
+        <div class="fg"><span class="fl">Average monthly rent per unit</span><div class="fr"><span class="pfx">$</span><input type="number" id="p-rent" value="1200" oninput="cp()"></div></div>
+        <div class="fg"><span class="fl">Annual lease renewals (% of units)</span><div class="fr"><input type="range" id="p-turn" min="10" max="100" value="40" step="5" oninput="cp();document.getElementById('p-turn-o').textContent=this.value+'%'"><span class="rout" id="p-turn-o">40%</span></div></div>
+      </div>
+      <div>
+        <div class="sl">FIG fee structure</div>
+        <div class="fee-card"><div class="rl">Management fee</div><div class="rv">8% of collected rent</div><div class="rs">Only charged when rent is collected</div></div>
+        <div class="fee-card"><div class="rl">Leasing fee</div><div class="rv">50% of one month's rent</div><div class="rs">Once per 12-month period per unit</div></div>
+        <div class="fee-card"><div class="rl">Maintenance coordination</div><div class="rv">$25 / unit / month</div><div class="rs">Vendor management, coordination &amp; reporting</div></div>
+        <div class="fee-card"><div class="rl">Software &amp; accounting</div><div class="rv">$10 / unit / month</div><div class="rs">All platforms and monthly reporting</div></div>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="sl">Your monthly estimate</div>
+    <div class="rgrid">
+      <div class="rc"><div class="rl">Gross monthly rent</div><div class="rv" id="p-gross">$6,000</div></div>
+      <div class="rc"><div class="rl">Management fee</div><div class="rv" id="p-mgmt">$480</div></div>
+      <div class="rc"><div class="rl">Maintenance coordination</div><div class="rv" id="p-maint">$100</div></div>
+    </div>
+    <div class="rgrid" style="margin-top:10px">
+      <div class="rc"><div class="rl">Software &amp; accounting</div><div class="rv" id="p-sw">$50</div></div>
+      <div class="rc"><div class="rl">Leasing fee (amortized)</div><div class="rv" id="p-lease">$200</div><div class="rs">monthly avg</div></div>
+      <div class="rc ac"><div class="rl">Total monthly cost</div><div class="rv" id="p-total">$830</div><div class="rs" id="p-pct-sub">13.8% of gross rent</div></div>
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-p" onclick="openReport()">Get My Report + Connect with FIG</button>
+      <button class="btn btn-s" onclick="sw('compare')">Compare vs self-managing</button>
+    </div>
+  </div>
+
+  <!-- SELF MGMT -->
+  <div id="p-selfmgmt" class="panel">
+    <div class="two">
+      <div>
+        <div class="sl">Your portfolio</div>
+        <div class="fg"><span class="fl">Number of units</span><div class="fr"><input type="number" id="s-units" value="5" min="1" oninput="cs()"></div></div>
+        <div class="fg"><span class="fl">Average monthly rent per unit</span><div class="fr"><span class="pfx">$</span><input type="number" id="s-rent" value="1200" oninput="cs()"></div></div>
+        <div class="fg"><span class="fl">Hours per unit per month</span><div class="fr"><input type="range" id="s-hrs" min="1" max="20" value="5" oninput="cs();document.getElementById('s-hrs-o').textContent=this.value+' hrs'"><span class="rout" id="s-hrs-o">5 hrs</span></div></div>
+        <div class="fg"><span class="fl">Your time value (hourly)</span><div class="fr"><span class="pfx">$</span><input type="number" id="s-rate" value="75" min="20" oninput="cs()"></div></div>
+      </div>
+      <div>
+        <div class="sl">Monthly out-of-pocket costs</div>
+        <div class="fg"><span class="fl">PM software / accounting</span><div class="fr"><span class="pfx">$</span><input type="number" id="s-sw" value="150" min="0" oninput="cs()"></div></div>
+        <div class="fg"><span class="fl">Marketing / listing fees</span><div class="fr"><span class="pfx">$</span><input type="number" id="s-mkt" value="100" min="0" oninput="cs()"></div></div>
+        <div class="fg"><span class="fl">Legal / compliance / misc</span><div class="fr"><span class="pfx">$</span><input type="number" id="s-legal" value="75" min="0" oninput="cs()"></div></div>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="sl">Your true monthly cost</div>
+    <div class="rgrid">
+      <div class="rc"><div class="rl">Time cost</div><div class="rv" id="s-time">$1,875</div><div class="rs" id="s-time-sub">25 hrs/mo</div></div>
+      <div class="rc"><div class="rl">Software &amp; tools</div><div class="rv" id="s-sw-o">$150</div></div>
+      <div class="rc"><div class="rl">Marketing &amp; legal</div><div class="rv" id="s-other">$175</div></div>
+    </div>
+    <div class="rgrid" style="margin-top:10px">
+      <div class="rc ac"><div class="rl">Total monthly cost</div><div class="rv" id="s-total">$2,200</div></div>
+      <div class="rc"><div class="rl">As % of gross rent</div><div class="rv" id="s-pct">30.6%</div></div>
+      <div class="rc"><div class="rl">Annual cost</div><div class="rv" id="s-annual">$26,400</div></div>
+    </div>
+    <p class="note">* Time cost reflects the real value of your hours — time spent managing is time not spent growing your portfolio or business. This is typically the most underestimated cost of self-management.</p>
+    <div class="cta-row">
+      <button class="btn btn-p" onclick="openReport()">Get My Report + Connect with FIG</button>
+      <button class="btn btn-s" onclick="sw('compare')">See the comparison</button>
+    </div>
+  </div>
+
+  <!-- COMPARE -->
+  <div id="p-compare" class="panel">
+    <p style="font-size:13px;color:var(--sage);margin-bottom:1.25rem">Based on your inputs in the Pricing and Self-Management tabs. Adjust those numbers to update this view.</p>
+    <div class="cc">
+      <div class="ccol">
+        <div class="ct">Self-managing</div>
+        <div class="crow"><span class="lb">Time cost</span><span class="vl" id="c-s-time">—</span></div>
+        <div class="crow"><span class="lb">Software &amp; tools</span><span class="vl" id="c-s-sw">—</span></div>
+        <div class="crow"><span class="lb">Marketing</span><span class="vl" id="c-s-mkt">—</span></div>
+        <div class="crow"><span class="lb">Legal &amp; misc</span><span class="vl" id="c-s-legal">—</span></div>
+        <div class="crow"><span class="lb">Vacancy risk (est. 5%)</span><span class="vl" id="c-s-vac">—</span></div>
+        <div class="tot"><span>Monthly total</span><span id="c-s-tot">—</span></div>
+      </div>
+      <div class="ccol fig">
+        <div class="ct">FIG Property Management</div>
+        <div class="crow"><span class="lb">Management fee (8%)</span><span class="vl" id="c-f-mgmt">—</span></div>
+        <div class="crow"><span class="lb">Maintenance coordination</span><span class="vl" id="c-f-maint">—</span></div>
+        <div class="crow"><span class="lb">Software &amp; accounting</span><span class="vl" id="c-f-sw">—</span></div>
+        <div class="crow"><span class="lb">Leasing fee (amortized)</span><span class="vl" id="c-f-lease">—</span></div>
+        <div class="crow"><span class="lb">Your time freed</span><span class="vl" style="color:var(--teal)">Included</span></div>
+        <div class="crow"><span class="lb">Eviction coverage</span><span class="vl" style="color:var(--teal)">Included</span></div>
+        <div class="tot"><span style="color:var(--teal)">Monthly total</span><span style="color:var(--teal)" id="c-f-tot">—</span></div>
+      </div>
+    </div>
+    <div class="sav">
+      <div><div class="slb">Estimated monthly value of switching to FIG</div><div style="font-size:11px;color:var(--sage);margin-top:2px">Time recovered + cost difference</div></div>
+      <div class="svl" id="c-sav">—</div>
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-p" onclick="openReport()">Get My Report + Connect with FIG</button>
+    </div>
+  </div>
+
+  <!-- ANALYSIS -->
+  <div id="p-analysis" class="panel">
+    <div class="two">
+      <div>
+        <div class="sl">Property details</div>
+        <div class="fg"><span class="fl">Monthly rent</span><div class="fr"><span class="pfx">$</span><input type="number" id="a-rent" value="1400" oninput="ca()"></div></div>
+        <div class="fg"><span class="fl">Property value / purchase price</span><div class="fr"><span class="pfx">$</span><input type="number" id="a-val" value="185000" oninput="ca()"></div></div>
+        <div class="fg"><span class="fl">Monthly mortgage / carrying cost</span><div class="fr"><span class="pfx">$</span><input type="number" id="a-mort" value="950" oninput="ca()"></div></div>
+      </div>
+      <div>
+        <div class="sl">Operating expenses</div>
+        <div class="fg"><span class="fl">Monthly insurance</span><div class="fr"><span class="pfx">$</span><input type="number" id="a-ins" value="120" oninput="ca()"></div></div>
+        <div class="fg"><span class="fl">Monthly taxes</span><div class="fr"><span class="pfx">$</span><input type="number" id="a-tax" value="140" oninput="ca()"></div></div>
+        <div class="fg"><span class="fl">Maintenance reserve (% of rent)</span><div class="fr"><input type="range" id="a-maint" min="5" max="20" value="10" oninput="ca();document.getElementById('a-maint-o').textContent=this.value+'%'"><span class="rout" id="a-maint-o">10%</span></div></div>
+      </div>
+    </div>
+    <hr class="div">
+    <div class="sl">Investment metrics</div>
+    <div class="rgrid">
+      <div class="rc"><div class="rl">Gross rent multiplier</div><div class="rv" id="a-grm">—</div><div class="rs">lower = better value</div></div>
+      <div class="rc"><div class="rl">Gross yield</div><div class="rv" id="a-yield">—</div></div>
+      <div class="rc ac"><div class="rl">Net operating income</div><div class="rv" id="a-noi">—</div><div class="rs">annual</div></div>
+    </div>
+    <div class="rgrid" style="margin-top:10px">
+      <div class="rc"><div class="rl">Monthly cash flow</div><div class="rv" id="a-cf">—</div></div>
+      <div class="rc"><div class="rl">Cash-on-cash (est. 20% down)</div><div class="rv" id="a-coc">—</div></div>
+      <div class="rc"><div class="rl">Expense ratio</div><div class="rv" id="a-exp">—</div></div>
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-p" onclick="openReport()">Get My Report + Connect with FIG</button>
+    </div>
+  </div>
+</div><!-- /.fw -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="mh">
+      <h3>Your FIG Owner Report</h3>
+      <button class="mclose no-print" onclick="closeModal()">&#215;</button>
+    </div>
+    <div class="mb">
+      <div class="lform no-print" id="lead-form">
+        <h4>Get your personalized report</h4>
+        <p>Enter your info and we'll generate your report instantly. The FIG team will follow up.</p>
+        <div class="lf2">
+          <div class="linput"><label>First &amp; last name</label><input type="text" id="l-name" placeholder="Jane Smith"></div>
+          <div class="linput"><label>Email address</label><input type="text" id="l-email" placeholder="jane@email.com"></div>
+        </div>
+        <div class="lerr" id="l-err">Please enter your name and a valid email address.</div>
+        <div class="status-msg" id="l-status"></div>
+        <div style="margin-top:1rem;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-p" id="submit-btn" onclick="submitLead()">Generate my report</button>
+          <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="report" id="report-body">
+        <div class="rept-header">
+          <div><div class="rept-brand">FIG Property Management</div><div class="rept-date" id="r-date"></div></div>
+          <button class="btn btn-s no-print" onclick="doPrint()" style="font-size:12px;padding:7px 14px">Print / Save PDF</button>
+        </div>
+        <div class="rept-sub" id="r-sub">Prepared for —</div>
+
+        <div class="rsect">
+          <div class="rsect-title">FIG management cost estimate</div>
+          <div class="rrow"><span class="rk">Units</span><span class="rv2" id="r-units">—</span></div>
+          <div class="rrow"><span class="rk">Avg monthly rent / unit</span><span class="rv2" id="r-rent">—</span></div>
+          <div class="rrow"><span class="rk">Gross monthly rent</span><span class="rv2" id="r-gross">—</span></div>
+          <div class="rrow"><span class="rk">Management fee (8%)</span><span class="rv2" id="r-mgmt">—</span></div>
+          <div class="rrow"><span class="rk">Maintenance coordination ($25/unit)</span><span class="rv2" id="r-maint">—</span></div>
+          <div class="rrow"><span class="rk">Software &amp; accounting ($10/unit)</span><span class="rv2" id="r-sw">—</span></div>
+          <div class="rrow"><span class="rk">Leasing fee (amortized monthly)</span><span class="rv2" id="r-lease">—</span></div>
+          <div class="rrow rtotal"><span class="rk">Total monthly FIG cost</span><span class="rv2" id="r-total">—</span></div>
+        </div>
+
+        <div class="rsect">
+          <div class="rsect-title">Self-management true cost</div>
+          <div class="rrow"><span class="rk">Time cost</span><span class="rv2" id="r-time">—</span></div>
+          <div class="rrow"><span class="rk">Software &amp; tools</span><span class="rv2" id="r-s-sw">—</span></div>
+          <div class="rrow"><span class="rk">Marketing &amp; legal</span><span class="rv2" id="r-s-other">—</span></div>
+          <div class="rrow"><span class="rk">Vacancy risk (est.)</span><span class="rv2" id="r-s-vac">—</span></div>
+          <div class="rrow rtotal"><span class="rk">Total monthly self-management cost</span><span class="rv2" id="r-s-total">—</span></div>
+        </div>
+
+        <div class="savings-box">
+          <div><div class="sk">Estimated monthly value of switching to FIG</div><div style="font-size:11px;color:var(--sage);margin-top:2px">Time recovered + cost difference</div></div>
+          <div class="sv" id="r-savings">—</div>
+        </div>
+
+        <div class="rsect" id="r-analysis-sect" style="display:none">
+          <div class="rsect-title">Rental property analysis</div>
+          <div class="rrow"><span class="rk">Monthly rent</span><span class="rv2" id="ra-rent">—</span></div>
+          <div class="rrow"><span class="rk">Property value</span><span class="rv2" id="ra-val">—</span></div>
+          <div class="rrow"><span class="rk">Gross rent multiplier</span><span class="rv2" id="ra-grm">—</span></div>
+          <div class="rrow"><span class="rk">Gross yield</span><span class="rv2" id="ra-yield">—</span></div>
+          <div class="rrow"><span class="rk">Net operating income (annual)</span><span class="rv2" id="ra-noi">—</span></div>
+          <div class="rrow"><span class="rk">Monthly cash flow</span><span class="rv2" id="ra-cf">—</span></div>
+          <div class="rrow"><span class="rk">Cash-on-cash return (est.)</span><span class="rv2" id="ra-coc">—</span></div>
+        </div>
+
+        <div class="rept-footer">
+          This report is an estimate based on the inputs provided. Actual fees may vary.<br>
+          FIG Property Management &middot; figpminc.com &middot; (865) 326-6333<br>
+          Leasing fee charged once per 12-month period per unit. Management fee only charged on collected rent. Cancel anytime with 30-day notice.
+        </div>
+
+        <div style="margin-top:1.25rem;display:flex;gap:10px;flex-wrap:wrap" class="no-print">
+          <button class="btn btn-p" onclick="window.open(CONNECT_URL,'_blank')">Connect with FIG</button>
+          <button class="btn btn-s" onclick="doPrint()">Print / Save as PDF</button>
+          <button class="btn btn-s" onclick="closeModal()">Close</button>
+        </div>
+        <div class="lead-note no-print" id="lead-note"></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /#modal -->
+
+</div><!-- /.wrapper -->
+
+<script>
+const fmt  = n => '$' + Math.round(n).toLocaleString();
+const fmtP = n => n.toFixed(1) + '%';
+let state = { pUnits:5,pRent:1200,pTurn:40,sUnits:5,sRent:1200,sHrs:5,sRate:75,sSw:150,sMkt:100,sLegal:75,aRent:1400,aVal:185000,aMort:950,aIns:120,aTax:140,aMaint:10 };
+
+function cp() {
+  const u=+document.getElementById('p-units').value||1,r=+document.getElementById('p-rent').value||0,t=(+document.getElementById('p-turn').value||40)/100;
+  state.pUnits=u;state.pRent=r;state.pTurn=t*100;
+  const gross=u*r,mgmt=gross*.08,maint=u*25,sw=u*10,lease=u*t*(r*.5)/12,total=mgmt+maint+sw+lease;
+  document.getElementById('p-gross').textContent=fmt(gross);
+  document.getElementById('p-mgmt').textContent=fmt(mgmt);
+  document.getElementById('p-maint').textContent=fmt(maint);
+  document.getElementById('p-sw').textContent=fmt(sw);
+  document.getElementById('p-lease').textContent=fmt(lease);
+  document.getElementById('p-total').textContent=fmt(total);
+  document.getElementById('p-pct-sub').textContent=gross>0?fmtP(total/gross*100)+' of gross rent':'';
+  uc();
+}
+function cs() {
+  const u=+document.getElementById('s-units').value||1,r=+document.getElementById('s-rent').value||0,h=+document.getElementById('s-hrs').value||5,rt=+document.getElementById('s-rate').value||75;
+  const sw=+document.getElementById('s-sw').value||0,mkt=+document.getElementById('s-mkt').value||0,legal=+document.getElementById('s-legal').value||0;
+  state.sUnits=u;state.sRent=r;state.sHrs=h;state.sRate=rt;state.sSw=sw;state.sMkt=mkt;state.sLegal=legal;
+  const tc=u*h*rt,total=tc+sw+mkt+legal,gross=u*r;
+  document.getElementById('s-time').textContent=fmt(tc);
+  document.getElementById('s-time-sub').textContent=(u*h)+' hrs/mo';
+  document.getElementById('s-sw-o').textContent=fmt(sw);
+  document.getElementById('s-other').textContent=fmt(mkt+legal);
+  document.getElementById('s-total').textContent=fmt(total);
+  document.getElementById('s-pct').textContent=gross>0?fmtP(total/gross*100):'—';
+  document.getElementById('s-annual').textContent=fmt(total*12);
+  uc();
+}
+function uc() {
+  const u=state.sUnits,r=state.sRent,vac=u*r*.05,tc=u*state.sHrs*state.sRate,sTotal=tc+state.sSw+state.sMkt+state.sLegal+vac;
+  const fMgmt=state.pUnits*state.pRent*.08,fMaint=state.pUnits*25,fSw=state.pUnits*10,fLease=state.pUnits*(state.pTurn/100)*(state.pRent*.5)/12,fTotal=fMgmt+fMaint+fSw+fLease;
+  document.getElementById('c-s-time').textContent=fmt(tc);
+  document.getElementById('c-s-sw').textContent=fmt(state.sSw);
+  document.getElementById('c-s-mkt').textContent=fmt(state.sMkt);
+  document.getElementById('c-s-legal').textContent=fmt(state.sLegal);
+  document.getElementById('c-s-vac').textContent=fmt(vac);
+  document.getElementById('c-s-tot').textContent=fmt(sTotal);
+  document.getElementById('c-f-mgmt').textContent=fmt(fMgmt);
+  document.getElementById('c-f-maint').textContent=fmt(fMaint);
+  document.getElementById('c-f-sw').textContent=fmt(fSw);
+  document.getElementById('c-f-lease').textContent=fmt(fLease);
+  document.getElementById('c-f-tot').textContent=fmt(fTotal);
+  const sav=sTotal-fTotal,el=document.getElementById('c-sav');
+  el.textContent=(sav>=0?'+':'')+fmt(sav)+'/mo';
+  el.style.color=sav>=0?'var(--teal)':'#a33';
+}
+function ca() {
+  const r=+document.getElementById('a-rent').value||0,v=+document.getElementById('a-val').value||1;
+  const mort=+document.getElementById('a-mort').value||0,ins=+document.getElementById('a-ins').value||0,tax=+document.getElementById('a-tax').value||0;
+  const mp=(+document.getElementById('a-maint').value||10)/100,maint=r*mp,exp=mort+ins+tax+maint,cf=r-exp;
+  state.aRent=r;state.aVal=v;state.aMort=mort;state.aIns=ins;state.aTax=tax;state.aMaint=mp*100;
+  document.getElementById('a-grm').textContent=(v/(r*12)).toFixed(1)+'x';
+  document.getElementById('a-yield').textContent=fmtP(r*12/v*100);
+  document.getElementById('a-noi').textContent=fmt((r-ins-tax-maint)*12);
+  document.getElementById('a-cf').textContent=fmt(cf);
+  document.getElementById('a-coc').textContent=fmtP(cf*12/(v*.2)*100);
+  document.getElementById('a-exp').textContent=fmtP(r>0?(exp/r)*100:0);
+}
+function sw(id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  ['pricing','selfmgmt','compare','analysis'].forEach((n,i)=>{
+    if(n===id){document.querySelectorAll('.tab')[i].classList.add('on');document.getElementById('p-'+n).classList.add('on');}
+  });
+  if(id==='compare')uc();
+}
+function openReport() {
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('lead-form').style.display='block';
+  document.getElementById('report-body').classList.remove('show');
+  document.getElementById('l-err').style.display='none';
+  document.getElementById('l-status').style.display='none';
+  const btn=document.getElementById('submit-btn');btn.disabled=false;btn.textContent='Generate my report';
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+async function submitLead() {
+  const name=document.getElementById('l-name').value.trim(),email=document.getElementById('l-email').value.trim();
+  if(!name||!email.match(/^[^@]+@[^@]+\.[^@]+$/)){document.getElementById('l-err').style.display='block';return;}
+  document.getElementById('l-err').style.display='none';
+  const btn=document.getElementById('submit-btn');btn.disabled=true;btn.textContent='Sending...';
+  const u=state.pUnits,r=state.pRent,t=state.pTurn/100;
+  const fTotal=u*r*.08+u*25+u*10+u*t*(r*.5)/12;
+  const sTotal=state.sUnits*state.sHrs*state.sRate+state.sSw+state.sMkt+state.sLegal+state.sUnits*state.sRent*.05;
+  const summary=`Website lead — Owner Tools\nName: ${name}\nEmail: ${email}\nPortfolio: ${u} units @ ${fmt(r)}/unit\nGross rent: ${fmt(u*r)}/mo\nFIG est. cost: ${fmt(fTotal)}/mo\nSelf-mgmt true cost: ${fmt(sTotal)}/mo\nEst. monthly value of switching: ${fmt(sTotal-fTotal)}\nGenerated: ${new Date().toLocaleString()}`;
+  // Send to Blanket in background — never block the UI on it
+  postLead(name, email, summary).catch(() => {});
+  const st=document.getElementById('l-status');
+  st.className='status-msg ok';
+  st.textContent='Got it! Generating your report...';
+  st.style.display='block';
+  setTimeout(()=>buildReport(name,email,true),900);
+}
+function buildReport(name,email,ok) {
+  document.getElementById('r-date').textContent='Generated '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('r-sub').textContent='Prepared for '+name+' \u00b7 '+email;
+  const u=state.pUnits,r=state.pRent,t=state.pTurn/100;
+  const gross=u*r,mgmt=gross*.08,maint=u*25,sw=u*10,lease=u*t*(r*.5)/12,fTotal=mgmt+maint+sw+lease;
+  document.getElementById('r-units').textContent=u+' unit'+(u>1?'s':'');
+  document.getElementById('r-rent').textContent=fmt(r)+'/mo';
+  document.getElementById('r-gross').textContent=fmt(gross)+'/mo';
+  document.getElementById('r-mgmt').textContent=fmt(mgmt)+'/mo';
+  document.getElementById('r-maint').textContent=fmt(maint)+'/mo';
+  document.getElementById('r-sw').textContent=fmt(sw)+'/mo';
+  document.getElementById('r-lease').textContent=fmt(lease)+'/mo';
+  document.getElementById('r-total').textContent=fmt(fTotal)+'/mo';
+  const tc=state.sUnits*state.sHrs*state.sRate,vac=state.sUnits*state.sRent*.05,sTotal=tc+state.sSw+state.sMkt+state.sLegal+vac;
+  document.getElementById('r-time').textContent=fmt(tc)+'/mo ('+state.sUnits*state.sHrs+' hrs)';
+  document.getElementById('r-s-sw').textContent=fmt(state.sSw)+'/mo';
+  document.getElementById('r-s-other').textContent=fmt(state.sMkt+state.sLegal)+'/mo';
+  document.getElementById('r-s-vac').textContent=fmt(vac)+'/mo';
+  document.getElementById('r-s-total').textContent=fmt(sTotal)+'/mo';
+  const sav=sTotal-fTotal,savEl=document.getElementById('r-savings');
+  savEl.textContent=(sav>=0?'+':'')+fmt(sav)+'/mo';
+  savEl.style.color=sav>=0?'var(--teal)':'#a33';
+  if(state.aRent>0&&state.aVal>0){
+    const mi=state.aMaint/100,exp=state.aMort+state.aIns+state.aTax+state.aRent*mi,cf=state.aRent-exp;
+    document.getElementById('r-analysis-sect').style.display='block';
+    document.getElementById('ra-rent').textContent=fmt(state.aRent)+'/mo';
+    document.getElementById('ra-val').textContent=fmt(state.aVal);
+    document.getElementById('ra-grm').textContent=(state.aVal/(state.aRent*12)).toFixed(1)+'x';
+    document.getElementById('ra-yield').textContent=fmtP(state.aRent*12/state.aVal*100);
+    document.getElementById('ra-noi').textContent=fmt((state.aRent-state.aIns-state.aTax-state.aRent*mi)*12);
+    document.getElementById('ra-cf').textContent=fmt(cf)+'/mo';
+    document.getElementById('ra-coc').textContent=fmtP(cf*12/(state.aVal*.2)*100);
+  }
+  document.getElementById('lead-note').textContent=ok?'Your information has been received by the FIG team.':'';
+  document.getElementById('lead-form').style.display='none';
+  document.getElementById('report-body').classList.add('show');
+}
+
+function doPrint() {
+  const reportEl = document.getElementById('report-body');
+  const html = reportEl.innerHTML;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups for this site, then try again.');
+    return;
+  }
+  const doc = printWindow.document;
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8">');
+  doc.write('<title>FIG Owner Report<\/title>');
+  doc.write('<style>');
+  doc.write(':root{--mint:#cfddd8;--sage:#869f96;--cream:#faf6ef;--teal:#074650;--warm-gray:#b5af9f;--text:#2e3227;--border:#cfddd8;}');
+  doc.write('*{box-sizing:border-box;margin:0;padding:0;}');
+  doc.write('body{font-family:-apple-system,sans-serif;background:#fff;color:var(--text);padding:2.5rem 3rem;max-width:760px;margin:0 auto;}');
+  doc.write('.no-print{display:none!important;}');
+  doc.write('.rept-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid var(--mint);}');
+  doc.write('.rept-brand{font-family:Georgia,serif;font-size:18px;color:var(--teal);}');
+  doc.write('.rept-date{font-size:11px;color:var(--warm-gray);margin-top:2px;}');
+  doc.write('.rept-sub{font-size:13px;color:var(--sage);margin-bottom:1.5rem;}');
+  doc.write('.rsect{margin-bottom:1.5rem;}');
+  doc.write('.rsect-title{font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid var(--mint);}');
+  doc.write('.rrow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid rgba(0,0,0,.04);}');
+  doc.write('.rrow .rk{color:var(--sage);}');
+  doc.write('.rrow .rv2{font-weight:500;color:var(--text);}');
+  doc.write('.rrow.rtotal{border-top:1px solid var(--border);margin-top:4px;padding-top:8px;font-size:14px;font-weight:700;}');
+  doc.write('.rrow.rtotal .rv2{color:var(--teal);}');
+  doc.write('.savings-box{background:var(--mint);border:1px solid var(--teal);border-radius:8px;padding:1rem 1.25rem;margin:1.25rem 0;display:flex;justify-content:space-between;align-items:center;}');
+  doc.write('.savings-box .sk{font-size:13px;color:var(--text);}');
+  doc.write('.savings-box .sv{font-family:Georgia,serif;font-size:22px;color:var(--teal);}');
+  doc.write('.rept-footer{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:11px;color:var(--warm-gray);line-height:1.8;}');
+  doc.write('<\/style><\/head><body>');
+  doc.write(html);
+  doc.write('<\/body><\/html>');
+  doc.close();
+  printWindow.focus();
+  setTimeout(function(){ printWindow.print(); }, 500);
+}
+
+cp();cs();ca();
+</script>
+</body>
+</html>
