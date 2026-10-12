@@ -1,14 +1,38 @@
-// Receives Blanket's "Signed Owners" webhook (sent once, when an item is created there,
-// i.e. when an owner lead hits Close Won) and creates a card on Aptly's Owner Onboarding board.
+// Receives Blanket's signed-owner webhooks (sent once, when an item is created in a hand-off
+// pipeline, i.e. when an owner lead hits Close Won) and creates the matching Aptly card:
+//   full management (default)  → Owner Onboarding board
+//   ?route=leasing             → Property Marketing board (leasing-only owners)
 //
 // Env vars (Netlify → Site configuration → Environment variables):
 //   APTLY_ONBOARDING_KEY   API key from Aptly's Owner Onboarding board
-//   ONBOARDING_WEBHOOK_KEY shared secret; Blanket's webhook URL must end in ?key=<this value>
+//   APTLY_MARKETING_KEY    API key from Aptly's Property Marketing board
+//   ONBOARDING_WEBHOOK_KEY shared secret; Blanket's webhook URL must include ?key=<this value>
 
-const BOARD_ID = "vwTdY5uXCDzDsjGj4";          // Aptly: Owner Onboarding
-const CONTACT_FIELD = "QWh8sNhgsqEd7H5J8";     // Owner Onboarding → Contact (person)
 const OWNER_TYPE_ID = "QQD9gimh4A4yCGZFw";     // Aptly contact type: Owner
 const API = "https://core-api.getaptly.com";
+
+const ROUTES = {
+  onboarding: {
+    label: "Owner Onboarding",
+    boardId: "vwTdY5uXCDzDsjGj4",
+    contactField: "QWh8sNhgsqEd7H5J8",          // Contact (person)
+    stage: "Property Type Check",
+    keyEnv: "APTLY_ONBOARDING_KEY",
+    dedupe: true,
+    source: "Blanket: signed owner (Owner Leads → Close Won)",
+    extra: {}
+  },
+  leasing: {
+    label: "Property Marketing",
+    boardId: "QK2DGqNjiEczLJbLt",
+    contactField: "97rvLmpvJQrTeYNRJ",          // Contact (person)
+    stage: "Create Listing",
+    keyEnv: "APTLY_MARKETING_KEY",
+    dedupe: false,                              // repeat leasing clients get a new card per listing
+    source: "Blanket: signed leasing-only owner (Owner Leads → Close Won)",
+    extra: { prhgFXap5DNHvn8XT: "W5wQNdBYG5oezGtsW" }  // Service Type = Leasing Only
+  }
+};
 
 exports.handler = async function (event) {
   const json = (statusCode, body) => ({ statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -19,9 +43,11 @@ exports.handler = async function (event) {
   const key = (event.queryStringParameters || {}).key;
   if (!secret || key !== secret) return json(401, { error: "Unauthorized" });
 
-  const apiKey = process.env.APTLY_ONBOARDING_KEY;
+  const route = ROUTES[(event.queryStringParameters || {}).route] || ROUTES.onboarding;
+  const BOARD_ID = route.boardId;
+  const apiKey = process.env[route.keyEnv];
   if (!apiKey) {
-    console.error("Missing APTLY_ONBOARDING_KEY env var");
+    console.error(`Missing ${route.keyEnv} env var`);
     return json(500, { error: "Server misconfigured" });
   }
 
@@ -41,8 +67,8 @@ exports.handler = async function (event) {
   const headers = { "Content-Type": "application/json", "x-token": apiKey };
 
   try {
-    // 1. Skip if this owner already has an open Owner Onboarding card (protects against retries).
-    if (email) {
+    // 1. Skip if this owner already has an Owner Onboarding card (protects against retries).
+    if (route.dedupe && email) {
       const listRes = await fetch(`${API}/api/board/${BOARD_ID}/list`, {
         method: "POST",
         headers,
@@ -51,7 +77,7 @@ exports.handler = async function (event) {
       if (listRes.ok) {
         const list = await listRes.json().catch(() => ({}));
         if ((list.count || (list.data || []).length) > 0) {
-          console.log("Onboarding card already exists for", email);
+          console.log(`${route.label} card already exists for`, email);
           return json(200, { skipped: "card already exists" });
         }
       } else {
@@ -74,25 +100,33 @@ exports.handler = async function (event) {
     }
     const contactId = contact._id || (contact.data && contact.data._id);
 
-    // 3. Create the Owner Onboarding card.
+    // 3. Create the card.
     const card = {
       name: fullName,
-      stage: "Property Type Check",
-      description: `<p><strong>Source</strong><br>Blanket: signed owner (Owner Leads → Close Won)</p>
+      stage: route.stage,
+      ...route.extra,
+      description: `<p><strong>Source</strong><br>${route.source}</p>
 <p><strong>Email</strong><br>${email || "—"}</p>
 <p><strong>Phone</strong><br>${phone || "—"}</p>
 <p><strong>Blanket item</strong><br>${payload.itemId || "—"}</p>
 <p>Property address, # of doors and service type: see the owner's record in Blanket.</p>`
     };
-    if (contactId) card[CONTACT_FIELD] = { _id: contactId };
+    if (contactId) card[route.contactField] = { _id: contactId };
 
-    const cardRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify(card) });
-    const cardOut = await cardRes.json().catch(() => ({}));
+    let cardRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify(card) });
+    let cardOut = await cardRes.json().catch(() => ({}));
+    if (!cardRes.ok && Object.keys(route.extra).length) {
+      // Retry without the extra select fields in case Aptly rejects their format.
+      console.error("Aptly card error with extra fields, retrying", cardRes.status, JSON.stringify(cardOut));
+      for (const k of Object.keys(route.extra)) delete card[k];
+      cardRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify(card) });
+      cardOut = await cardRes.json().catch(() => ({}));
+    }
     if (!cardRes.ok) {
       console.error("Aptly card error", cardRes.status, JSON.stringify(cardOut));
       return json(502, { error: "Aptly rejected the card" });
     }
-    console.log("Onboarding card created:", JSON.stringify(cardOut));
+    console.log(`${route.label} card created:`, JSON.stringify(cardOut));
     return json(200, { success: true });
 
   } catch (err) {
