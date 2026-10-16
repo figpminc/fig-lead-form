@@ -1,6 +1,7 @@
 // Receives Netlify form webhooks from the vendor sign-up form on freedominvestmentgroupinc.com
 // and creates a card on Aptly's Vendor Library board (stage Onboarding, assigned to Julia),
-// with the vendor saved as a Vendor contact and their W9 / workers' comp files attached.
+// with the vendor saved as a Vendor contact, their W9 / workers' comp files attached, and a
+// "Start vendor onboarding" task for Julia due the next business day.
 //
 // Env vars (Netlify → Site configuration → Environment variables):
 //   APTLY_VENDOR_KEY    API key from Aptly's Vendor Library board
@@ -10,12 +11,22 @@ const API = "https://core-api.getaptly.com";
 const BOARD_ID = "boihFiooyvNKAD8nz";             // Vendor Library
 const VENDOR_TYPE_ID = "JobfaJcmYfKzbtLMT";       // Aptly contact type: Vendor
 const JULIA = "udA4AurEsheRDJm8C";                // Julia Sibley, maintenance & construction admin
+const KATIE = "cDdtciekpJx5GvTCv";                // Katie Linkous, shown as the task's creator
 const FIELDS = {
   status: "nv6FqaS7mQAMN3HfQ",                    // Status (single select)
   contacts: "ndxbsrpdbRF8GJDaR"                   // Contacts (persons)
 };
 const STATUS_ONBOARDING = "Onboarding";          // select fields take the option label, not its id
 const FILE_FIELDS = [["w9", "W9"], ["workers_comp", "Workers comp or state waiver"]];
+
+// Next business day at 5 p.m. Eastern (21:00 UTC during daylight time, 22:00 otherwise).
+function nextBusinessDay() {
+  const d = new Date();
+  do { d.setUTCDate(d.getUTCDate() + 1); } while ([0, 6].includes(d.getUTCDay()));
+  const month = d.getUTCMonth();
+  d.setUTCHours(month > 2 && month < 10 ? 21 : 22, 0, 0, 0);
+  return d.toISOString();
+}
 
 const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -120,7 +131,29 @@ exports.handler = async function (event) {
         console.error(`Could not attach ${label}:`, err.message);
       }
     }
-    return json(200, { success: true, cardId, attached });
+    // 4. Give Julia a task so the new vendor shows up in her to-do list.
+    let task = false;
+    if (cardId) {
+      const taskRes = await fetch(`${API}/api/tasks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId: KATIE,
+          title: "Start vendor onboarding",
+          assigneeId: JULIA,
+          dueAt: nextBusinessDay(),
+          type: "task",
+          status: "notStarted",
+          priority: "medium",
+          note: `New vendor sign-up from the website: ${company || name || email}${trades ? ` (${trades})` : ""}.`,
+          aptletInstanceId: cardId,
+          aptletUuid: BOARD_ID
+        })
+      });
+      task = taskRes.ok;
+      if (!taskRes.ok) console.error("Aptly task error", taskRes.status, await taskRes.text().catch(() => ""));
+    }
+    return json(200, { success: true, cardId, attached, task });
 
   } catch (err) {
     console.error("Vendor webhook error:", err.message);
