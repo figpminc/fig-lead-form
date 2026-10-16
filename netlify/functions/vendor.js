@@ -14,7 +14,7 @@ const FIELDS = {
   status: "nv6FqaS7mQAMN3HfQ",                    // Status (single select)
   contacts: "ndxbsrpdbRF8GJDaR"                   // Contacts (persons)
 };
-const STATUS_ONBOARDING = "hLRnCgK8qTSc95bGT";
+const STATUS_ONBOARDING = "Onboarding";          // select fields take the option label, not its id
 const FILE_FIELDS = [["w9", "W9"], ["workers_comp", "Workers comp or state waiver"]];
 
 const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
