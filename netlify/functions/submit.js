@@ -19,10 +19,11 @@ exports.handler = async function (event) {
   const lastName  = (payload.lastName  || "").trim();
   const email     = (payload.email     || "").trim();
   const phone     = (payload.phone     || "").trim();
+  const address   = (payload.address   || "").trim();
   const units     = (payload.units     || "").trim();
   const smsConsent = payload.smsConsent === true;
 
-  if (!firstName || !lastName || !email || !phone || !units) {
+  if (!firstName || !lastName || !email || !phone || !address || !units) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing required fields" }) };
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -48,7 +49,8 @@ exports.handler = async function (event) {
     phone: normalizedPhone || phone,
     smsConsent,
     units: parseInt(units, 10) || undefined, // "2-5" -> 2, "21+" -> 21
-    message: `Number of units: ${units}`,
+    address,
+    message: `Property address: ${address}\nNumber of units: ${units}`,
     source: "Free Management Quote form",
     pageUrl: "https://spectacular-jalebi-8c3bc3.netlify.app/",
     leadTemperature: "warm_inbound"
