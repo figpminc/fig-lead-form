@@ -13,8 +13,11 @@ const VENDOR_TYPE_ID = "JobfaJcmYfKzbtLMT";       // Aptly contact type: Vendor
 const JULIA = "udA4AurEsheRDJm8C";                // Julia Sibley, maintenance & construction admin
 const FIELDS = {
   status: "nv6FqaS7mQAMN3HfQ",                    // Status (single select)
-  contacts: "ndxbsrpdbRF8GJDaR"                   // Contacts (persons)
+  contacts: "ndxbsrpdbRF8GJDaR",                  // Contacts (persons)
+  areas: "pDsENhKWm878poi9K"                      // Areas Served (multi select)
 };
+// Options on the Areas Served field; the form's checkboxes use these exact labels.
+const AREA_OPTIONS = ["Knoxville", "Tri-Cities", "Roane County", "Blount County"];
 const STATUS_ONBOARDING = "Onboarding";          // select fields take the option label, not its id
 const FILE_FIELDS = [["w9", "W9"], ["workers_comp", "Workers comp or state waiver"]];
 
@@ -45,6 +48,12 @@ exports.handler = async function (event) {
   const email = String(d.email || "").trim();
   const phone = String(d.phone || "").trim();
   const trades = String(d.trades || "").trim();
+  // Netlify sends a checkbox group as an array or a comma-separated string.
+  const pickedAreas = (Array.isArray(d.areas) ? d.areas : String(d.areas || "").split(","))
+    .map((a) => String(a).trim()).filter(Boolean);
+  const areas = AREA_OPTIONS.filter((opt) => pickedAreas.some((a) => a.toLowerCase() === opt.toLowerCase()));
+  const otherAreas = String(d.areas_other || "").trim();
+  const areasText = [...areas, otherAreas].filter(Boolean).join(", ");
   if (!email && !phone) return json(400, { error: "Need an email or phone to create the contact" });
 
   const headers = { "Content-Type": "application/json", "x-token": apiKey };
@@ -78,8 +87,10 @@ exports.handler = async function (event) {
 <p><strong>Company</strong><br>${esc(company) || "—"}</p>
 <p><strong>Email</strong><br>${esc(email) || "—"}</p>
 <p><strong>Phone</strong><br>${esc(phone) || "—"}</p>
-<p><strong>Trade(s)</strong><br>${esc(trades) || "—"}</p>`
+<p><strong>Trade(s)</strong><br>${esc(trades) || "—"}</p>
+<p><strong>Areas served</strong><br>${esc(areasText) || "—"}</p>`
     };
+    if (areas.length) card[FIELDS.areas] = areas;   // select fields take option labels
     if (contactId) {
       card[FIELDS.contacts] = [{ _id: contactId }];
       card.relatedContacts = [{ _id: contactId }];
@@ -90,7 +101,7 @@ exports.handler = async function (event) {
     if (!cardRes.ok) {
       // Retry with just the essentials in case Aptly rejects a field's format.
       console.error("Aptly card error, retrying with fewer fields", cardRes.status, JSON.stringify(cardOut));
-      for (const k of ["assignee", FIELDS.status]) delete card[k];
+      for (const k of ["assignee", FIELDS.status, FIELDS.areas]) delete card[k];
       cardRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify(card) });
       cardOut = await cardRes.json().catch(() => ({}));
     }
