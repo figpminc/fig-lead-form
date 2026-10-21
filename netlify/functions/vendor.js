@@ -2,7 +2,9 @@
 // and creates a card on Aptly's Vendor Library board (stage Onboarding, assigned to Julia),
 // with the vendor saved as a Vendor contact and their W9 / workers' comp files attached.
 // Julia's onboarding checklist comes from Aptly's "Card creation" automation (Onboarding task template),
-// which only fires once the card is updated, so step 4 touches the card after creating it.
+// which fires when a card ENTERS the Onboarding stage. A card created straight into a stage through
+// the API doesn't count as entering it, so step 2 creates the card in a holding stage and step 4
+// moves it into Onboarding.
 //
 // Env vars (Netlify → Site configuration → Environment variables):
 //   APTLY_VENDOR_KEY    API key from Aptly's Vendor Library board
@@ -22,6 +24,7 @@ const FIELDS = {
 // until those options are added in Aptly) still show in the card description.
 const AREA_OPTIONS = ["Knoxville", "Tri-Cities", "Roane County", "Blount County"];
 const STATUS_ONBOARDING = "Onboarding";          // select fields take the option label, not its id
+const HOLDING_STAGE = "Other";                   // card lands here first; step 4 moves it to Onboarding
 const FILE_FIELDS = [["w9", "W9"], ["workers_comp", "Workers comp or state waiver"]];
 
 const esc = (s) => String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -79,10 +82,10 @@ exports.handler = async function (event) {
     }
     const contactId = contact._id || (contact.data && contact.data._id);
 
-    // 2. Create the card in Onboarding, assigned to Julia.
+    // 2. Create the card in the holding stage, assigned to Julia (step 4 moves it to Onboarding).
     const card = {
       name: company || name || email,
-      stage: "Onboarding",
+      stage: HOLDING_STAGE,
       assignee: JULIA,
       [FIELDS.status]: STATUS_ONBOARDING,
       description: `<p><strong>Source</strong><br>Vendor sign-up form, freedominvestmentgroupinc.com</p>
@@ -135,18 +138,22 @@ exports.handler = async function (event) {
         console.error(`Could not attach ${label}:`, err.message);
       }
     }
-    // 4. Touch the card. Aptly doesn't run segment automations ("Card creation" → Onboarding tasks)
-    //    on a card created through the API until the card is updated, so add a received-line.
+    // 4. Move the card into Onboarding (this stage entry fires the "Card creation" automation →
+    //    Onboarding tasks) and add a received-line. One retry, since a card left in the holding
+    //    stage gets no tasks.
     let touched = false;
     if (cardId) {
-      try {
-        const received = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "short", timeStyle: "short" });
-        const note = `<p><em>Received ${esc(received)}${attached.length ? ` · files: ${esc(attached.join(", "))}` : ""}</em></p>`;
-        const touchRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify({ _id: cardId, description: card.description + "\n" + note }) });
-        touched = touchRes.ok;
-        if (!touched) console.error("Aptly card touch error", touchRes.status, await touchRes.text().catch(() => ""));
-      } catch (err) {
-        console.error("Could not touch card:", err.message);
+      const received = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "short", timeStyle: "short" });
+      const note = `<p><em>Received ${esc(received)}${attached.length ? ` · files: ${esc(attached.join(", "))}` : ""}</em></p>`;
+      const body = JSON.stringify({ _id: cardId, stage: "Onboarding", description: card.description + "\n" + note });
+      for (let attempt = 1; attempt <= 2 && !touched; attempt++) {
+        try {
+          const touchRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body });
+          touched = touchRes.ok;
+          if (!touched) console.error(`Aptly move-to-Onboarding error (attempt ${attempt})`, touchRes.status, await touchRes.text().catch(() => ""));
+        } catch (err) {
+          console.error(`Could not move card to Onboarding (attempt ${attempt}):`, err.message);
+        }
       }
     }
     return json(200, { success: true, cardId, attached, touched });
