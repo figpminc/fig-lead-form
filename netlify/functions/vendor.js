@@ -16,7 +16,9 @@ const FIELDS = {
   contacts: "ndxbsrpdbRF8GJDaR",                  // Contacts (persons)
   areas: "pDsENhKWm878poi9K"                      // Areas Served (multi select)
 };
-// Options on the Areas Served field; the form's checkboxes use these exact labels.
+// Options that exist on Aptly's Areas Served field (labels must match exactly).
+// Areas checked on the form that aren't listed here (for example Nashville or Chattanooga
+// until those options are added in Aptly) still show in the card description.
 const AREA_OPTIONS = ["Knoxville", "Tri-Cities", "Roane County", "Blount County"];
 const STATUS_ONBOARDING = "Onboarding";          // select fields take the option label, not its id
 const FILE_FIELDS = [["w9", "W9"], ["workers_comp", "Workers comp or state waiver"]];
@@ -53,7 +55,7 @@ exports.handler = async function (event) {
     .map((a) => String(a).trim()).filter(Boolean);
   const areas = AREA_OPTIONS.filter((opt) => pickedAreas.some((a) => a.toLowerCase() === opt.toLowerCase()));
   const otherAreas = String(d.areas_other || "").trim();
-  const areasText = [...areas, otherAreas].filter(Boolean).join(", ");
+  const areasText = [...pickedAreas, otherAreas].filter(Boolean).join(", ");
   if (!email && !phone) return json(400, { error: "Need an email or phone to create the contact" });
 
   const headers = { "Content-Type": "application/json", "x-token": apiKey };
