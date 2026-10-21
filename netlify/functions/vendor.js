@@ -1,7 +1,8 @@
 // Receives Netlify form webhooks from the vendor sign-up form on freedominvestmentgroupinc.com
 // and creates a card on Aptly's Vendor Library board (stage Onboarding, assigned to Julia),
 // with the vendor saved as a Vendor contact and their W9 / workers' comp files attached.
-// Julia's onboarding checklist comes from Aptly's "Card creation" automation (Onboarding task template).
+// Julia's onboarding checklist comes from Aptly's "Card creation" automation (Onboarding task template),
+// which only fires once the card is updated, so step 4 touches the card after creating it.
 //
 // Env vars (Netlify → Site configuration → Environment variables):
 //   APTLY_VENDOR_KEY    API key from Aptly's Vendor Library board
@@ -134,7 +135,21 @@ exports.handler = async function (event) {
         console.error(`Could not attach ${label}:`, err.message);
       }
     }
-    return json(200, { success: true, cardId, attached });
+    // 4. Touch the card. Aptly doesn't run segment automations ("Card creation" → Onboarding tasks)
+    //    on a card created through the API until the card is updated, so add a received-line.
+    let touched = false;
+    if (cardId) {
+      try {
+        const received = new Date().toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "short", timeStyle: "short" });
+        const note = `<p><em>Received ${esc(received)}${attached.length ? ` · files: ${esc(attached.join(", "))}` : ""}</em></p>`;
+        const touchRes = await fetch(`${API}/api/board/${BOARD_ID}`, { method: "POST", headers, body: JSON.stringify({ _id: cardId, description: card.description + "\n" + note }) });
+        touched = touchRes.ok;
+        if (!touched) console.error("Aptly card touch error", touchRes.status, await touchRes.text().catch(() => ""));
+      } catch (err) {
+        console.error("Could not touch card:", err.message);
+      }
+    }
+    return json(200, { success: true, cardId, attached, touched });
 
   } catch (err) {
     console.error("Vendor webhook error:", err.message);
