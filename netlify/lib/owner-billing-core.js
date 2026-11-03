@@ -115,9 +115,9 @@ function jobsFromCard(board, c) {
   const unitName = first(c[board.unit]);
   // Building is filled on most cards; otherwise the property is the part of the unit name before " - ".
   const property = first(c[board.building]) || (unitName.includes(" - ") ? unitName.split(" - ")[0] : unitName) || "(no property)";
-  const unit = unitName && unitName.toLowerCase().startsWith(property.toLowerCase())
-    ? unitName.slice(property.length).replace(/^\s*-\s*/, "") || unitName
-    : unitName;
+  // Unit names repeat the property, sometimes twice ("Louella Dr - Louella Dr - 117"); keep just the unit.
+  let unit = unitName;
+  while (property && unit.toLowerCase().startsWith(property.toLowerCase() + " - ")) unit = unit.slice(property.length + 3);
   const base = {
     board: board.key, cardId, title: c.name || c.title || "", property, unit,
     owner: names(c[board.owners]).join(", "),
