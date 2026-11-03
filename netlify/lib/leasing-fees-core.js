@@ -14,7 +14,7 @@
 //   - Anything odd is flagged in the email instead of billed.
 //
 // Env vars (Netlify → Site configuration → Environment variables):
-//   RM_USERNAME, RM_PASSWORD   dedicated Rent Manager automation user
+//   RM_USERNAME, RM_AUTOMATION_PASSWORD   dedicated Rent Manager automation user (RM_PASSWORD still works as a fallback)
 //   RM_LOCATION_ID             optional, only if RM asks for a location at login
 //   APTLY_LEASING_FEES_KEY              any Aptly API key for the company (Applicants board has API on)
 //   LEASING_FEES_KEY           shared secret for the manual/dry-run URL
@@ -64,7 +64,7 @@ const short = s => (s || "").slice(0, 10);
 // ---------- Rent Manager ----------
 
 async function rmLogin() {
-  const user = process.env.RM_USERNAME, pass = process.env.RM_PASSWORD;
+  const user = process.env.RM_USERNAME, pass = process.env.RM_AUTOMATION_PASSWORD || process.env.RM_PASSWORD;
   if (!user || !pass) throw new Error("RM_USERNAME / RM_PASSWORD are not set in Netlify");
   const model = { Username: user, Password: pass };
   if (process.env.RM_LOCATION_ID) model.LocationID = Number(process.env.RM_LOCATION_ID);
