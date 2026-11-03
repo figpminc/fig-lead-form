@@ -7,3 +7,6 @@
   to = "/.netlify/functions/submit"
   status = 200
   force = true
+
+[functions."leasing-fees-scheduled"]
+schedule = "0 13 1 * *"
