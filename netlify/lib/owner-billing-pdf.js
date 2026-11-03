@@ -70,7 +70,8 @@ function invoicePdf({ number, date, period, property, address, owner, jobs }) {
       pg.text(M, y, "From", 9, true);
       pg.text(M + 260, y, "Bill to (property)", 9, true);
       FROM.forEach((s, i) => pg.text(M, y - 14 - 13 * i, s, 10));
-      const to = [property, ...(address && address !== property ? [address] : []), ...(owner ? ["Owner: " + owner] : [])];
+      const to = [property, ...(address && address !== property ? [address] : []), ...(owner ? ["Owner: " + owner] : [])]
+        .flatMap(s => wrap(s, 10, right - M - 260));
       to.forEach((s, i) => pg.text(M + 260, y - 14 - 13 * i, s, 10));
       y -= 14 + 13 * Math.max(FROM.length, to.length) + 18;
     }
