@@ -9,6 +9,7 @@
 //
 // Env vars: VENDOR_WEBHOOK_KEY, APTLY_VENDOR_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD
 
+const crypto = require("crypto");
 const { rmLogin } = require("../lib/leasing-fees-core");
 
 const API = "https://core-api.getaptly.com";
@@ -144,7 +145,9 @@ async function createVendor(session, vendor, wantPhone) {
 exports.handler = async function (event) {
   const q = event.queryStringParameters || {};
   const secret = process.env.VENDOR_WEBHOOK_KEY;
-  if (!secret || q.key !== secret) return json(401, { error: "Unauthorized" });
+  // The Aptly automation holds a key derived from the secret, so its URL only opens this function.
+  const hookKey = secret && crypto.createHash("sha256").update(`${secret}:vendor-to-rm`).digest("hex");
+  if (!secret || (q.key !== secret && q.key !== hookKey)) return json(401, { error: "Unauthorized" });
   const dry = q.dry === "1";
   if (!dry && event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
 
