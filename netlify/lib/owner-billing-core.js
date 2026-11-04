@@ -101,6 +101,15 @@ async function billedByComment(board, cardId) {
   return (await res.text()).includes(BILLED_NOTE);
 }
 
+async function isArchived(board, cardId) {
+  const res = await fetch(`${APTLY_API}/api/board/${board.uuid}/${cardId}`, { headers: { "x-token": aptlyKey() } });
+  if (!res.ok) throw new Error(`Aptly card ${cardId} → ${res.status}`);
+  const out = await res.json();
+  const archived = (out.data || out).archived;
+  if (typeof archived !== "boolean") throw new Error(`Aptly card ${cardId}: archived status missing`);
+  return archived;
+}
+
 async function updateCard(board, cardId, fields) {
   return aptly(`/api/board/${board.uuid}`, { _id: cardId, ...fields });
 }
@@ -156,7 +165,7 @@ async function collect() {
     for (const c of cards) {
       if (isTrue(c[board.billed])) continue;
       if (![board.lock, board.ozone, board.dehu].some(f => isTrue(c[f]))) continue;
-      if (c.archived === true && await billedByComment(board, c.cardId || c._id)) continue;
+      if (await billedByComment(board, c.cardId || c._id)) continue;
       const r = jobsFromCard(board, c);
       if (SECOND_CREEK.test(r.jobs[0]?.property || r.flags[0]?.property || "")) { secondCreek.push(...r.jobs, ...r.flags); continue; }
       jobs.push(...r.jobs);
@@ -196,13 +205,14 @@ const markLink = inv => {
 async function markSent(inv, cardsParam) {
   const done = [], failed = [];
   for (const item of String(cardsParam).split(",").filter(Boolean)) {
-    const [bk, id, flag] = item.split(":");
+    const [bk, id] = item.split(":");
     const board = BOARD[bk];
     if (!board || !id) { failed.push(item); continue; }
     // A POST update un-archives a card (even with archived:true), and that re-fires its automations,
     // tenant texts included. So an archived card gets a comment instead, which collect() reads.
+    // Checked now, not from the link: the card may have been archived since the email went out.
     try {
-      if (flag === "a") await aptly(`/api/board/${board.uuid}/${id}/comment`, { userId: KATIE_USER_ID, content: `${BILLED_NOTE} ${inv}` });
+      if (await isArchived(board, id)) await aptly(`/api/board/${board.uuid}/${id}/comment`, { userId: KATIE_USER_ID, content: `${BILLED_NOTE} ${inv}` });
       else await updateCard(board, id, { [board.billed]: true, [board.ref]: inv });
       done.push(item);
     }
