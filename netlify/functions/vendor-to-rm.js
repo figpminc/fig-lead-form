@@ -72,8 +72,11 @@ function buildVendor(card) {
       Payee: name.slice(0, 100),
       IsActive: true,
       Is1099: true, // Julia confirms from the W9
-      Contacts: [{ LastName: contactName || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6 }], // 6 = vendor contact; Rent Manager rejects FirstName on these
-      PhoneNumbers: phone ? [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: phone, IsPrimary: true }] : []
+      // ParentType 6 = vendor contact. Rent Manager rejects FirstName on these, and phones belong to the contact.
+      Contacts: [{
+        LastName: contactName || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6,
+        PhoneNumbers: phone ? [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: phone, IsPrimary: true, ParentType: 8 }] : []
+      }]
     }
   };
 }
@@ -120,7 +123,7 @@ async function createVendor(session, vendor) {
   const check = await fetch(`${RM_BASE}/api/Vendors/${created.VendorID}?embeds=Contacts,PhoneNumbers`, { headers: session.headers });
   const saved = await check.json();
   const missing = [];
-  const wantEmail = normEmail(vendor.Contacts[0].Email), wantPhone = normPhone(vendor.PhoneNumbers[0] && vendor.PhoneNumbers[0].PhoneNumber);
+  const wantEmail = normEmail(vendor.Contacts[0].Email), wantPhone = normPhone(vendor.Contacts[0].PhoneNumbers[0] && vendor.Contacts[0].PhoneNumbers[0].PhoneNumber);
   if (wantEmail && !(saved.Contacts || []).some(c => normEmail(c.Email) === wantEmail)) missing.push("email");
   if (wantPhone && !(saved.PhoneNumbers || []).some(p => normPhone(p.PhoneNumber) === wantPhone)) missing.push("phone");
   return { id: created.VendorID, missing };
