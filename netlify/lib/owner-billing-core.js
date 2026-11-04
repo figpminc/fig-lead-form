@@ -5,8 +5,8 @@
 // "Bill Owner: ..." and not yet "Owner Billed" (archived cards included), makes one PDF invoice
 // per property from FIG Maintenance, and emails them to Julia (cc Katie) to review and send to
 // Clyr. Nothing is entered in Rent Manager. Each invoice in the email has a "Mark as sent" link;
-// confirming it sets Owner Billed + Owner Bill Reference on that invoice's cards, so they aren't
-// billed again. Unmarked cards come back on the next run.
+// confirming it sets Owner Billed + Owner Bill Reference on that invoice's active cards, and adds a
+// comment on its archived ones, so they aren't billed again. Unmarked cards come back on the next run.
 //
 // Rules (Katie, 10/30/2026):
 //   - Bill the property, never the tenant.
@@ -31,6 +31,7 @@ const KATIE = "katie@freedominvestmentgroupinc.com";
 const PRICE = { deadbolt: 50, knob: 10, ozone: 200, dehumidifier: 200 };
 const SECOND_CREEK = /second creek/i;
 const TAGS_START = "2026-10-30T00:00:00.000Z"; // the Bill Owner fields were created 10/30
+const BILLED_NOTE = "Owner billed on invoice";
 
 const BOARDS = [
   {
@@ -94,6 +95,12 @@ async function listCards(board) {
   return cards;
 }
 
+async function billedByComment(board, cardId) {
+  const res = await fetch(`${APTLY_API}/api/board/${board.uuid}/${cardId}/comments`, { headers: { "x-token": aptlyKey() } });
+  if (!res.ok) throw new Error(`Aptly comments ${cardId} → ${res.status}`);
+  return (await res.text()).includes(BILLED_NOTE);
+}
+
 async function updateCard(board, cardId, fields) {
   return aptly(`/api/board/${board.uuid}`, { _id: cardId, ...fields });
 }
@@ -149,6 +156,7 @@ async function collect() {
     for (const c of cards) {
       if (isTrue(c[board.billed])) continue;
       if (![board.lock, board.ozone, board.dehu].some(f => isTrue(c[f]))) continue;
+      if (c.archived === true && await billedByComment(board, c.cardId || c._id)) continue;
       const r = jobsFromCard(board, c);
       if (SECOND_CREEK.test(r.jobs[0]?.property || r.flags[0]?.property || "")) { secondCreek.push(...r.jobs, ...r.flags); continue; }
       jobs.push(...r.jobs);
@@ -191,9 +199,13 @@ async function markSent(inv, cardsParam) {
     const [bk, id, flag] = item.split(":");
     const board = BOARD[bk];
     if (!board || !id) { failed.push(item); continue; }
-    // The API un-archives a card it updates unless told otherwise, and that re-fires its automations.
-    const keep = flag === "a" ? { archived: true } : {};
-    try { await updateCard(board, id, { ...keep, [board.billed]: true, [board.ref]: inv }); done.push(item); }
+    // A POST update un-archives a card (even with archived:true), and that re-fires its automations,
+    // tenant texts included. So an archived card gets a comment instead, which collect() reads.
+    try {
+      if (flag === "a") await aptly(`/api/board/${board.uuid}/${id}/comment`, { userId: KATIE_USER_ID, content: `${BILLED_NOTE} ${inv}` });
+      else await updateCard(board, id, { [board.billed]: true, [board.ref]: inv });
+      done.push(item);
+    }
     catch (e) { failed.push(`${item} (${String(e.message).slice(0, 80)})`); }
   }
   return { done, failed };
