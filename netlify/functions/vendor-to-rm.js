@@ -65,7 +65,6 @@ function buildVendor(card) {
   const contactName = fromDescription(card.description, "Contact");
   const email = fromDescription(card.description, "Email");
   const phone = normPhone(fromDescription(card.description, "Phone"));
-  const [first, ...rest] = contactName.split(/\s+/);
   return {
     summary: { name, contactName, email, phone },
     vendor: {
@@ -73,7 +72,7 @@ function buildVendor(card) {
       Payee: name.slice(0, 100),
       IsActive: true,
       Is1099: true, // Julia confirms from the W9
-      Contacts: [{ FirstName: rest.length ? first : "", LastName: (rest.length ? rest.join(" ") : first) || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6 }], // 6 = vendor contact
+      Contacts: [{ LastName: contactName || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6 }], // 6 = vendor contact; Rent Manager rejects FirstName on these
       PhoneNumbers: phone ? [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: phone, IsPrimary: true }] : []
     }
   };
