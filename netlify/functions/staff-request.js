@@ -14,7 +14,7 @@ const PAGE = require("../lib/staff-request-page");
 const RM_BASE = process.env.RM_BASE_URL || "https://figpm.rmx.rentmanager.com";
 const STATUS_NEW = 2;
 const JULIA_USER_ID = 13;
-const CATEGORIES = new Set([4, 8, 9, 10, 11, 12, 13, 14]);
+const CATEGORIES = new Set([4, 8, 9, 10, 11, 12, 13, 14, 16, 17]);
 const PRIORITIES = new Set([3, 4, 5]); // Medium, High, Low. Emergencies don't use this form.
 const LINK_EMBEDS = "ServiceManagerIssueLinkedProperties,ServiceManagerIssueLinkedUnits,ServiceManagerIssueLinkedTenants";
 
