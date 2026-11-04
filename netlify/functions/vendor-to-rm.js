@@ -72,11 +72,8 @@ function buildVendor(card) {
       Payee: name.slice(0, 100),
       IsActive: true,
       Is1099: true, // Julia confirms from the W9
-      // ParentType 6 = vendor contact. Rent Manager rejects FirstName on these, and phones belong to the contact.
-      Contacts: [{
-        LastName: contactName || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6,
-        PhoneNumbers: phone ? [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: phone, IsPrimary: true, ParentType: 8 }] : []
-      }]
+      // ParentType 6 = vendor contact. Rent Manager rejects FirstName on these.
+      Contacts: [{ LastName: contactName || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6 }]
     }
   };
 }
@@ -108,7 +105,7 @@ function findMatches(summary, vendors) {
   return matches;
 }
 
-async function createVendor(session, vendor) {
+async function createVendor(session, vendor, wantPhone) {
   const res = await fetch(`${RM_BASE}/api/Vendors?embeds=Contacts,PhoneNumbers`, {
     method: "POST",
     headers: { ...session.headers, "Content-Type": "application/json" },
@@ -119,11 +116,26 @@ async function createVendor(session, vendor) {
   const parsed = JSON.parse(text);
   const created = Array.isArray(parsed) ? parsed[0] : parsed;
 
+  const readBack = async () => (await fetch(`${RM_BASE}/api/Vendors/${created.VendorID}?embeds=Contacts,PhoneNumbers`, { headers: session.headers })).json();
+
+  // The phone only saves on the contact, after it exists. Rent Manager saves replace the whole
+  // record, so this sends back every value the contact already has.
+  if (wantPhone) {
+    const contactId = ((await readBack()).Contacts || [])[0].ContactID;
+    const contact = await (await fetch(`${RM_BASE}/api/Contacts/${contactId}`, { headers: session.headers })).json();
+    const scalars = Object.fromEntries(Object.entries(contact).filter(([, v]) => v === null || typeof v !== "object"));
+    const phoneRes = await fetch(`${RM_BASE}/api/Contacts?embeds=PhoneNumbers`, {
+      method: "POST",
+      headers: { ...session.headers, "Content-Type": "application/json" },
+      body: JSON.stringify([{ ...scalars, PhoneNumbers: [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: wantPhone, IsPrimary: true, ParentType: 8, ParentID: contactId }] }])
+    });
+    if (!phoneRes.ok) console.error("vendor-to-rm phone error", phoneRes.status, (await phoneRes.text()).slice(0, 200));
+  }
+
   // Read it back: only report what really saved.
-  const check = await fetch(`${RM_BASE}/api/Vendors/${created.VendorID}?embeds=Contacts,PhoneNumbers`, { headers: session.headers });
-  const saved = await check.json();
+  const saved = await readBack();
   const missing = [];
-  const wantEmail = normEmail(vendor.Contacts[0].Email), wantPhone = normPhone(vendor.Contacts[0].PhoneNumbers[0] && vendor.Contacts[0].PhoneNumbers[0].PhoneNumber);
+  const wantEmail = normEmail(vendor.Contacts[0].Email);
   if (wantEmail && !(saved.Contacts || []).some(c => normEmail(c.Email) === wantEmail)) missing.push("email");
   if (wantPhone && !(saved.PhoneNumbers || []).some(p => normPhone(p.PhoneNumber) === wantPhone)) missing.push("phone");
   return { id: created.VendorID, missing };
@@ -162,7 +174,7 @@ exports.handler = async function (event) {
       return json(200, { created: false, matches });
     }
 
-    const { id, missing } = await createVendor(session, vendor);
+    const { id, missing } = await createVendor(session, vendor, summary.phone);
     const gaps = missing.length ? ` The ${missing.join(" and ")} did not save, so please add ${missing.length > 1 ? "them" : "it"} in Rent Manager.` : "";
     await comment(cardId, `${ADDED_NOTE}${id}.${gaps} Please add the tax ID from the W9 and confirm the 1099 setting there.`);
     return json(200, { created: true, vendorId: id, missing });
