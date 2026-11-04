@@ -73,7 +73,7 @@ function buildVendor(card) {
       Payee: name.slice(0, 100),
       IsActive: true,
       Is1099: true, // Julia confirms from the W9
-      Contacts: [{ FirstName: rest.length ? first : "", LastName: (rest.length ? rest.join(" ") : first) || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1 }],
+      Contacts: [{ FirstName: rest.length ? first : "", LastName: (rest.length ? rest.join(" ") : first) || name, Email: email, IsPrimary: true, IsActive: true, ContactTypeID: -1, ParentType: 6 }], // 6 = vendor contact
       PhoneNumbers: phone ? [{ PhoneNumberTypeID: PHONE_TYPE, PhoneNumber: phone, IsPrimary: true }] : []
     }
   };
