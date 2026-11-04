@@ -119,7 +119,7 @@ function jobsFromCard(board, c) {
   let unit = unitName;
   while (property && unit.toLowerCase().startsWith(property.toLowerCase() + " - ")) unit = unit.slice(property.length + 3);
   const base = {
-    board: board.key, cardId, title: c.name || c.title || "", property, unit,
+    board: board.key, cardId, archived: c.archived === true, title: c.name || c.title || "", property, unit,
     owner: names(c[board.owners]).join(", "),
     issue: board.issue ? String(c[board.issue] || "") : "",
     workDate: board.dates.map(f => day(c[f])).find(Boolean) || day(c.updatedAt || c.lastActivity)
@@ -167,7 +167,7 @@ function invoices(jobs, t) {
     const number = `FM-${t.ym}-${pad(n++)}`;
     const owner = js.find(j => j.owner)?.owner || "";
     const { bytes, total } = invoicePdf({ number, date: t.date, period: t.period, property, owner, jobs: js });
-    const cards = [...new Set(js.map(j => `${j.board}:${j.cardId}`))];
+    const cards = [...new Set(js.map(j => `${j.board}:${j.cardId}${j.archived ? ":a" : ""}`))];
     return { number, property, owner, total, jobs: js, cards, bytes, file: `${number} ${property.replace(/[^A-Za-z0-9 .-]+/g, "").trim()}.pdf` };
   });
 }
@@ -188,10 +188,12 @@ const markLink = inv => {
 async function markSent(inv, cardsParam) {
   const done = [], failed = [];
   for (const item of String(cardsParam).split(",").filter(Boolean)) {
-    const [bk, id] = item.split(":");
+    const [bk, id, flag] = item.split(":");
     const board = BOARD[bk];
     if (!board || !id) { failed.push(item); continue; }
-    try { await updateCard(board, id, { [board.billed]: true, [board.ref]: inv }); done.push(item); }
+    // The API un-archives a card it updates unless told otherwise, and that re-fires its automations.
+    const keep = flag === "a" ? { archived: true } : {};
+    try { await updateCard(board, id, { ...keep, [board.billed]: true, [board.ref]: inv }); done.push(item); }
     catch (e) { failed.push(`${item} (${String(e.message).slice(0, 80)})`); }
   }
   return { done, failed };
