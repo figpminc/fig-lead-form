@@ -31,8 +31,8 @@ button:disabled{opacity:.5;cursor:default}
 <input type="text" id="title" maxlength="100" required>
 <label for="description">Describe the problem</label>
 <textarea id="description" required></textarea>
-<label for="category">Category <small>(use Maintenance for HVAC and appliances)</small></label>
-<select id="category" required><option value="">Select...</option><option value="4">Maintenance</option><option value="9">Plumbing</option><option value="10">Electric</option><option value="11">Exterior - Building</option><option value="12">Common Area</option><option value="13">Grounds / Landscaping</option><option value="14">Lock Out or Lock Issue</option><option value="8">Property Wide</option></select>
+<label for="category">Category</label>
+<select id="category" required><option value="">Select...</option><option value="4">Maintenance</option><option value="9">Plumbing</option><option value="10">Electric</option><option value="16">HVAC</option><option value="17">Appliance</option><option value="11">Exterior - Building</option><option value="12">Common Area</option><option value="13">Grounds / Landscaping</option><option value="14">Locks / Lockout</option><option value="8">Property Wide</option></select>
 <label for="priority">Priority</label>
 <select id="priority" required><option value="">Select...</option><option value="5">Low</option><option value="3">Medium</option><option value="4">High</option></select>
 <label class="check"><input type="checkbox" id="okToEnter"> OK to enter if no one is home</label>
