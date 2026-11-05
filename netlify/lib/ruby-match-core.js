@@ -56,6 +56,7 @@ async function listActive(uuid, days) {
   return cards;
 }
 
+const idOf = c => c.cardId || c._id;
 const related = v => (Array.isArray(v) ? v : v ? [v] : []).filter(x => x && x._id);
 const label = v => related(v).map(x => x.name).filter(Boolean).join(", ");
 const stageOf = c => (c.stage && c.stage.label) || c.stage || "";
@@ -97,10 +98,10 @@ function callNote(call) {
 
 async function emailReview(call, why, cards) {
   const row = (k, v) => `<tr><td style="padding:2px 12px 2px 0;color:#555">${h(k)}</td><td>${h(v)}</td></tr>`;
-  const links = (cards || []).map(c => `<li><a href="${cardUrl(MX, c._id)}">${h(c.name)}</a></li>`).join("");
+  const links = (cards || []).map(c => `<li><a href="${cardUrl(MX, idOf(c))}">${h(c.name)}</a></li>`).join("");
   const body = `<p>A Ruby call needs a person to check it: <b>${h(why)}</b>.</p>
 <table>${row("Issue", call.name)}${row("Caller", call[F.caller])}${row("Phone", call[F.phone])}${row("Address given", call[F.address])}${row("Unit", label(call[F.unit]))}${row("Emergency", call[F.emergency])}${row("Vendor assigned", label(call[F.vendor]))}${row("Reached vendor", call[F.reached])}${row("ETA or notes", call[F.eta])}${row("Ruby agent", call[F.agent])}</table>
-<p><a href="${cardUrl(RUBY, call._id)}">Open the Ruby Calls card</a></p>${links ? `<p>Maintenance cards:</p><ul>${links}</ul>` : ""}
+<p><a href="${cardUrl(RUBY, idOf(call))}">Open the Ruby Calls card</a></p>${links ? `<p>Maintenance cards:</p><ul>${links}</ul>` : ""}
 <p>Set the vendor on the Maintenance card by hand, then move the Ruby card to Done.</p>`;
   await aptly("/api/email/send", {
     userId: KATIE_USER_ID, channelId: KATIE_FIG_INBOX,
@@ -120,16 +121,16 @@ async function run({ live }) {
     report.push(line);
     if (!live) continue;
     if (d.action === "assign") {
-      await aptly(`/api/board/${MX}`, { _id: d.card._id, [F.vendor]: d.vendor });
+      await aptly(`/api/board/${MX}`, { _id: idOf(d.card), [F.vendor]: d.vendor });
       d.card[F.vendor] = d.vendor; // a second call in this run sees the vendor
-      await aptly(`/api/board/${MX}/${d.card._id}/comment`, { userId: KATIE_USER_ID, content: callNote(call) });
+      await aptly(`/api/board/${MX}/${idOf(d.card)}/comment`, { userId: KATIE_USER_ID, content: callNote(call) });
     }
     if (d.action === "assign" || d.action === "same") {
-      await aptly(`/api/board/${RUBY}`, { _id: call._id, stage: "Matched", [F.result]: `Maintenance card ${d.card.name}` });
+      await aptly(`/api/board/${RUBY}`, { _id: idOf(call), stage: "Matched", [F.result]: `Maintenance card ${d.card.name}` });
     }
     if (d.action === "review") {
       await emailReview(call, d.why, d.cards);
-      await aptly(`/api/board/${RUBY}`, { _id: call._id, stage: "Needs Review", [F.result]: d.why });
+      await aptly(`/api/board/${RUBY}`, { _id: idOf(call), stage: "Needs Review", [F.result]: d.why });
     }
   }
   return { live: !!live, calls: calls.length, report };
