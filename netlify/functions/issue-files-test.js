@@ -53,7 +53,8 @@ exports.handler = async function (event) {
     const downloaded = Date.now() - started;
 
     const form = new FormData();
-    form.append("file", new Blob([bytes]), f.name);
+    const types = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", heic: "image/heic", mp4: "video/mp4", mov: "video/quicktime", pdf: "application/pdf" };
+    form.append("file", new Blob([bytes], { type: types[f.name.split(".").pop().toLowerCase()] || "application/octet-stream" }), f.name);
     const up = await fetch(`${APTLY_API}/api/board/${MX}/${q.card}/file`, {
       method: "POST",
       headers: { "x-token": process.env.APTLY_RUBY_KEY || process.env.APTLY_OWNER_BILLING_KEY },
