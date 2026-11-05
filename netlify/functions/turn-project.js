@@ -23,7 +23,7 @@ const STATUS_NEW = 2;
 const CATEGORY_TURNOVER = 15;
 const MARKER = "Turn project";
 
-const MR = { issuesNeeded: "QWsh3D2x5mfu86S4h", createProject: "rsMuAAqpwa44Ds7Q3", unit: "jqqnyPoY56AWzQjxk", building: "g9H2d86wZCropbHSj", lease: "G6BKdnweeTyjbef4u" };
+const MR = { issuesNeeded: "QWsh3D2x5mfu86S4h", createProject: "rsMuAAqpwa44Ds7Q3", unit: "jqqnyPoY56AWzQjxk", building: "g9H2d86wZCropbHSj", lease: "G6BKdnweeTyjbef4u", shortName: "NvqDbqjDiLMYygm8k" };
 const WO = { issueId: "QBLnTaXCbaCqJs7co", category: "r5pES4msj8YaC7wPJ", unit: "jW5Lvy4xhM6TJfuRe", building: "TKdovRPB9xJfYaP78", lease: "X5Et2msLcSY4QDNLu" };
 
 // Same order and due-date offsets as the Turn - Standard template in Rent Manager.
@@ -90,6 +90,17 @@ async function createRmIssue(session, issue) {
   return (Array.isArray(parsed) ? parsed[0] : parsed).ServiceManagerIssueID;
 }
 
+// The Make Ready card mirrors the unit's short name and building, which match Rent Manager's Unit and Property names.
+// Anything other than exactly one match stops here, so an issue can't land on the wrong unit.
+async function findRmUnit(session, shortName, building) {
+  if (!shortName || !building) throw new Error("This Make Ready card is missing its unit short name or building");
+  const units = await rmGet(session, `Units?filters=Name,eq,${encodeURIComponent(shortName)}&embeds=Property&fields=UnitID,Name,PropertyID,Property`);
+  const want = String(building.name).trim().toLowerCase();
+  const matches = (units || []).filter(u => u.Property && [u.Property.Name, u.Property.ShortName].some(n => String(n || "").trim().toLowerCase() === want));
+  if (matches.length !== 1) throw new Error(`Expected one Rent Manager unit named "${shortName}" at ${building.name}, found ${matches.length}`);
+  return { UnitID: matches[0].UnitID, Name: matches[0].Name, PropertyID: matches[0].PropertyID };
+}
+
 function dueDate(days) {
   const d = new Date(Date.now() + days * 86400000);
   return `${d.toLocaleDateString("en-CA", { timeZone: "America/New_York" })}T12:00:00`;
@@ -107,12 +118,9 @@ async function run(cardId, dry) {
   const issues = plan(card);
   const unitLink = links(card[MR.unit])[0];
   if (!unitLink) throw new Error("This Make Ready card has no Unit");
-  const unitCard = await aptly(`/api/board/unit/${unitLink._id}`);
-  const rmUnitId = Number(unitCard.rentmanagerId);
-  if (!rmUnitId) throw new Error(`Unit ${unitLink.name} has no Rent Manager ID`);
 
   const session = await rmLogin();
-  const rmUnit = await rmGet(session, `Units/${rmUnitId}?fields=UnitID,PropertyID,Name`);
+  const rmUnit = await findRmUnit(session, card[MR.shortName], links(card[MR.building])[0]);
   const comments = await aptly(`/api/board/${MAKE_READY}/${cardId}/comments`);
   const list = Array.isArray(comments) ? comments : comments.comments || [];
   const already = list.some(c => String(c.content || "").includes(MARKER));
@@ -136,7 +144,7 @@ async function run(cardId, dry) {
         AssignedToUserID: MAINTENANCE_ADMIN_RM_USER,
         DueDate: dueDate(i.days),
         ServiceManagerIssueLinkedProperties: [{ PropertyID: rmUnit.PropertyID }],
-        ServiceManagerIssueLinkedUnits: [{ UnitID: rmUnitId }]
+        ServiceManagerIssueLinkedUnits: [{ UnitID: rmUnit.UnitID }]
       });
       const entry = { title: i.title, rmId };
       created.push(entry);
@@ -178,7 +186,7 @@ exports.handler = async function (event) {
     }
     if (q.mode === "access") {
       const out = {};
-      for (const b of [MAKE_READY, TURN_WO, "unit"]) {
+      for (const b of [MAKE_READY, TURN_WO]) {
         try { await aptly(`/api/board/${b}/list`, { page: 1, pageSize: 1 }); out[b] = "ok"; } catch (e) { out[b] = String(e.message).slice(0, 120); }
       }
       return json(200, out);
