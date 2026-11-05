@@ -69,7 +69,7 @@ function decide(call, mxCards) {
   const unit = related(call[F.unit]);
   if (!unit.length) return { action: "review", why: "Ruby did not pick a unit, so it can't be matched" };
   const found = mxCards.filter(c =>
-    stageOf(c) !== "Closed" &&
+    !["Closed", "Cancelled"].includes(stageOf(c)) &&
     ageMinutes(c) <= MATCH_DAYS * 1440 &&
     related(c[F.unit]).some(u => u._id === unit[0]._id));
   if (!found.length) {
