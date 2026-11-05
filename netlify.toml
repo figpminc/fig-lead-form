@@ -14,3 +14,7 @@ schedule = "0 13 1 * *"
 [functions."owner-billing-scheduled"]
 # 1st of each month at 14:00 UTC (9 AM EST / 10 AM EDT), an hour after the leasing-fee bills
 schedule = "0 14 1 * *"
+
+[functions."ruby-match-scheduled"]
+# every 5 minutes
+schedule = "*/5 * * * *"
