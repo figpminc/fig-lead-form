@@ -194,7 +194,10 @@ async function closeIssue(cardId, dry) {
     if (before.IsClosed) return { skipped: `RM issue ${issueId} is already closed`, before: issueSummary(before) };
     const done = stage === "Done";
     const note = String((done ? card[WO.vendorNotes] : card[WO.cancelNote]) || "").trim();
-    const closeDate = `${new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })}T12:00:00`;
+    // RM refuses a close date earlier than the issue's open date, including earlier the same day.
+    const now = new Date().toLocaleString("sv-SE", { timeZone: "America/New_York" }).replace(" ", "T");
+    const opened = String(before.AssignedOpenDate || "");
+    const closeDate = opened > now ? opened : now;
     const update = {
       ...before,
       StatusID: done ? STATUS_RESOLVED : STATUS_UNRESOLVED,
