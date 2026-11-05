@@ -5,6 +5,8 @@
 //
 //   POST /.netlify/functions/turn-project?key=<hook key>&card=<id>         create the project
 //   GET  /.netlify/functions/turn-project?key=<secret>&card=<id>&dry=1     shows the plan; changes nothing
+//   POST /.netlify/functions/turn-project?key=<hook key>&mode=close&card=<id>  a Turn Work Orders card reached Done or Cancelled:
+//        closes its RM issue (Done = Resolved, Cancelled = Unresolved). It sends the whole issue back, because a partial POST blanks fields.
 //   GET  /.netlify/functions/turn-project?key=<secret>&mode=rminfo&issue=<id>  RM statuses and one issue; changes nothing
 //
 // Env vars: VENDOR_WEBHOOK_KEY, APTLY_TURN_PROJECT_KEY or APTLY_OWNER_BILLING_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD
@@ -22,9 +24,12 @@ const MAINTENANCE_ADMIN_RM_USER = 13;
 const STATUS_NEW = 2;
 const CATEGORY_TURNOVER = 15;
 const MARKER = "Turn project";
+const STATUS_RESOLVED = 5;
+const STATUS_UNRESOLVED = 4;
+const LINK_EMBEDS = "ServiceManagerIssueLinkedProperties,ServiceManagerIssueLinkedUnits,ServiceManagerIssueLinkedTenants";
 
 const MR = { issuesNeeded: "QWsh3D2x5mfu86S4h", createProject: "rsMuAAqpwa44Ds7Q3", unit: "jqqnyPoY56AWzQjxk", building: "g9H2d86wZCropbHSj", lease: "G6BKdnweeTyjbef4u", shortName: "NvqDbqjDiLMYygm8k" };
-const WO = { issueId: "QBLnTaXCbaCqJs7co", category: "r5pES4msj8YaC7wPJ", unit: "jW5Lvy4xhM6TJfuRe", building: "TKdovRPB9xJfYaP78", lease: "X5Et2msLcSY4QDNLu" };
+const WO = { vendorNotes: "Mgpg5xvwxkiCXJhX2", cancelNote: "GfwsHD94FBQPbzFKW", issueId: "QBLnTaXCbaCqJs7co", category: "r5pES4msj8YaC7wPJ", unit: "jW5Lvy4xhM6TJfuRe", building: "TKdovRPB9xJfYaP78", lease: "X5Et2msLcSY4QDNLu" };
 
 // Same order and due-date offsets as the Turn - Standard template in Rent Manager.
 const ISSUES = [
@@ -59,7 +64,7 @@ async function aptly(path, body) {
   throw new Error(last);
 }
 
-const comment = (cardId, content) => aptly(`/api/board/${MAKE_READY}/${cardId}/comment`, { userId: COMMENT_USER, content });
+const comment = (cardId, content, board = MAKE_READY) => aptly(`/api/board/${board}/${cardId}/comment`, { userId: COMMENT_USER, content });
 
 function cardIdFrom(event) {
   const q = event.queryStringParameters || {};
@@ -171,6 +176,47 @@ async function run(cardId, dry) {
   return { created, ...summary };
 }
 
+const issueSummary = i => ({
+  id: i.ServiceManagerIssueID, title: i.Title, description: i.Description, resolution: i.Resolution, category: i.CategoryID, status: i.StatusID,
+  isClosed: i.IsClosed, closeDate: i.CloseDate, assignedTo: i.AssignedToUserID, due: i.DueDate, priority: i.PriorityID, vendor: i.VendorID,
+  units: (i.ServiceManagerIssueLinkedUnits || []).map(u => u.UnitID), properties: (i.ServiceManagerIssueLinkedProperties || []).map(u => u.PropertyID)
+});
+
+async function closeIssue(cardId, dry) {
+  const card = await aptly(`/api/board/${TURN_WO}/${cardId}`);
+  const stage = card.stage;
+  if (stage !== "Done" && stage !== "Cancelled") return { skipped: `Card is in ${stage}, not Done or Cancelled` };
+  const issueId = Number(card[WO.issueId]);
+  if (!issueId) return { skipped: "Card has no Service Manager Issue ID" };
+  try {
+    const session = await rmLogin();
+    const before = await rmGet(session, `ServiceManagerIssues/${issueId}?embeds=${LINK_EMBEDS}`);
+    if (before.IsClosed) return { skipped: `RM issue ${issueId} is already closed`, before: issueSummary(before) };
+    const done = stage === "Done";
+    const note = String((done ? card[WO.vendorNotes] : card[WO.cancelNote]) || "").trim();
+    const update = {
+      ...before,
+      StatusID: done ? STATUS_RESOLVED : STATUS_UNRESOLVED,
+      IsClosed: true,
+      CloseDate: `${new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })}T12:00:00`,
+      Resolution: before.Resolution || note || (done ? "Completed on the Turn Work Orders board in Aptly." : "Cancelled on the Turn Work Orders board in Aptly.")
+    };
+    if (dry) return { dry: true, before: issueSummary(before), wouldSet: { StatusID: update.StatusID, IsClosed: true, CloseDate: update.CloseDate, Resolution: update.Resolution } };
+    const res = await fetch(`${RM_BASE}/api/ServiceManagerIssues?embeds=${LINK_EMBEDS}`, {
+      method: "POST",
+      headers: { ...session.headers, "Content-Type": "application/json" },
+      body: JSON.stringify([update])
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Rent Manager returned ${res.status}: ${text.slice(0, 300)}`);
+    const after = await rmGet(session, `ServiceManagerIssues/${issueId}?embeds=${LINK_EMBEDS}`);
+    return { closed: issueId, before: issueSummary(before), after: issueSummary(after) };
+  } catch (e) {
+    await comment(cardId, `Could not close RM issue ${issueId}: ${String(e.message || e).slice(0, 300)}. Close it in Rent Manager.`, TURN_WO);
+    throw e;
+  }
+}
+
 exports.handler = async function (event) {
   const q = event.queryStringParameters || {};
   const secret = process.env.VENDOR_WEBHOOK_KEY;
@@ -181,7 +227,7 @@ exports.handler = async function (event) {
     if (q.mode === "rminfo") {
       const session = await rmLogin();
       const statuses = await rmGet(session, "ServiceManagerStatuses?fields=ServiceManagerStatusID,Name,IsClosed");
-      const issue = q.issue ? await rmGet(session, `ServiceManagerIssues/${Number(q.issue)}`) : null;
+      const issue = q.issue ? issueSummary(await rmGet(session, `ServiceManagerIssues/${Number(q.issue)}?embeds=${LINK_EMBEDS}`)) : null;
       return json(200, { statuses, issue });
     }
     if (q.mode === "access") {
@@ -195,6 +241,7 @@ exports.handler = async function (event) {
     if (!dry && event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
     const cardId = cardIdFrom(event);
     if (!cardId) return json(400, { error: "No card id" });
+    if (q.mode === "close") return json(200, await closeIssue(cardId, dry));
     return json(200, await run(cardId, dry));
   } catch (e) {
     return json(500, { error: String(e.message || e) });
