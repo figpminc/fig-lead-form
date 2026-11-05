@@ -178,7 +178,7 @@ async function run(cardId, dry) {
 
 const issueSummary = i => ({
   id: i.ServiceManagerIssueID, title: i.Title, description: i.Description, resolution: i.Resolution, category: i.CategoryID, status: i.StatusID,
-  isClosed: i.IsClosed, closeDate: i.CloseDate, assignedTo: i.AssignedToUserID, due: i.DueDate, priority: i.PriorityID, vendor: i.VendorID,
+  isClosed: i.IsClosed, closeDate: i.CloseDate, assignedCloseDate: i.AssignedCloseDate, assignedTo: i.AssignedToUserID, due: i.DueDate, priority: i.PriorityID, vendor: i.VendorID,
   units: (i.ServiceManagerIssueLinkedUnits || []).map(u => u.UnitID), properties: (i.ServiceManagerIssueLinkedProperties || []).map(u => u.PropertyID)
 });
 
@@ -194,11 +194,13 @@ async function closeIssue(cardId, dry) {
     if (before.IsClosed) return { skipped: `RM issue ${issueId} is already closed`, before: issueSummary(before) };
     const done = stage === "Done";
     const note = String((done ? card[WO.vendorNotes] : card[WO.cancelNote]) || "").trim();
+    const closeDate = `${new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })}T12:00:00`;
     const update = {
       ...before,
       StatusID: done ? STATUS_RESOLVED : STATUS_UNRESOLVED,
       IsClosed: true,
-      CloseDate: `${new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" })}T12:00:00`,
+      CloseDate: closeDate,
+      AssignedCloseDate: closeDate,
       Resolution: before.Resolution || note || (done ? "Completed on the Turn Work Orders board in Aptly." : "Cancelled on the Turn Work Orders board in Aptly.")
     };
     if (dry) return { dry: true, before: issueSummary(before), wouldSet: { StatusID: update.StatusID, IsClosed: true, CloseDate: update.CloseDate, Resolution: update.Resolution } };
