@@ -8,7 +8,7 @@
 // Calls with no vendor stay in New Call as the record of the call.
 //
 // Env vars: APTLY_RUBY_KEY (falls back to APTLY_OWNER_BILLING_KEY) needs Ruby Calls + Maintenance.
-//           RUBY_MATCH_KEY (falls back to OWNER_BILLING_KEY) is the secret for the manual URL.
+//           RUBY_MATCH_KEY (falls back to OWNER_BILLING_KEY, then LEASING_FEES_KEY) is the secret for the manual URL.
 
 const APTLY_API = "https://core-api.getaptly.com";
 const KATIE_USER_ID = "cDdtciekpJx5GvTCv";
@@ -29,7 +29,7 @@ const WAIT_MINUTES = 20; // Charlie's card should exist first; give it time befo
 const LOOKBACK_DAYS = 7;
 
 const aptlyKey = () => process.env.APTLY_RUBY_KEY || process.env.APTLY_OWNER_BILLING_KEY;
-const secret = () => process.env.RUBY_MATCH_KEY || process.env.OWNER_BILLING_KEY;
+const secret = () => process.env.RUBY_MATCH_KEY || process.env.OWNER_BILLING_KEY || process.env.LEASING_FEES_KEY;
 const h = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
 async function aptly(path, body) {
