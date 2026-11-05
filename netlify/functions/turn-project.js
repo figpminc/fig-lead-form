@@ -7,7 +7,7 @@
 //   GET  /.netlify/functions/turn-project?key=<secret>&card=<id>&dry=1     shows the plan; changes nothing
 //   GET  /.netlify/functions/turn-project?key=<secret>&mode=rminfo&issue=<id>  RM statuses and one issue; changes nothing
 //
-// Env vars: VENDOR_WEBHOOK_KEY, APTLY_VENDOR_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD
+// Env vars: VENDOR_WEBHOOK_KEY, APTLY_TURN_PROJECT_KEY or APTLY_OWNER_BILLING_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD
 
 const crypto = require("crypto");
 const { rmLogin } = require("../lib/leasing-fees-core");
@@ -39,16 +39,24 @@ const ISSUES = [
 
 const json = (statusCode, body) => ({ statusCode, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }, body: JSON.stringify(body) });
 
+// Aptly API keys are limited to certain boards, so each call uses the first key allowed on that board.
+const aptlyKeys = () => [process.env.APTLY_TURN_PROJECT_KEY, process.env.APTLY_OWNER_BILLING_KEY, process.env.APTLY_VENDOR_KEY].filter(Boolean);
+
 async function aptly(path, body) {
-  const res = await fetch(`${API}${path}`, {
-    method: body ? "POST" : "GET",
-    headers: { "Content-Type": "application/json", "x-token": process.env.APTLY_VENDOR_KEY },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Aptly ${path.split("/").slice(0, 4).join("/")} returned ${res.status}: ${text.slice(0, 200)}`);
-  const parsed = text ? JSON.parse(text) : {};
-  return parsed.data !== undefined ? parsed.data : parsed;
+  let last = "No Aptly API key is set";
+  for (const key of aptlyKeys()) {
+    const res = await fetch(`${API}${path}`, {
+      method: body ? "POST" : "GET",
+      headers: { "Content-Type": "application/json", "x-token": key },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await res.text();
+    if (res.status === 403) { last = `Aptly ${path.split("/").slice(0, 4).join("/")} returned 403: ${text.slice(0, 200)}`; continue; }
+    if (!res.ok) throw new Error(`Aptly ${path.split("/").slice(0, 4).join("/")} returned ${res.status}: ${text.slice(0, 200)}`);
+    const parsed = text ? JSON.parse(text) : {};
+    return parsed.data !== undefined ? parsed.data : parsed;
+  }
+  throw new Error(last);
 }
 
 const comment = (cardId, content) => aptly(`/api/board/${MAKE_READY}/${cardId}/comment`, { userId: COMMENT_USER, content });
@@ -167,6 +175,13 @@ exports.handler = async function (event) {
       const statuses = await rmGet(session, "ServiceManagerStatuses?fields=ServiceManagerStatusID,Name,IsClosed");
       const issue = q.issue ? await rmGet(session, `ServiceManagerIssues/${Number(q.issue)}`) : null;
       return json(200, { statuses, issue });
+    }
+    if (q.mode === "access") {
+      const out = {};
+      for (const b of [MAKE_READY, TURN_WO, "unit"]) {
+        try { await aptly(`/api/board/${b}/list`, { page: 1, pageSize: 1 }); out[b] = "ok"; } catch (e) { out[b] = String(e.message).slice(0, 120); }
+      }
+      return json(200, out);
     }
     const dry = q.dry === "1";
     if (!dry && event.httpMethod !== "POST") return json(405, { error: "Method not allowed" });
