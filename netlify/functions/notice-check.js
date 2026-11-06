@@ -7,6 +7,7 @@
 //   GET  ?key=<LEASING_FEES_KEY>&mode=dry&board=monthly|weekly      shows what would be marked; changes nothing
 //        &stage=<stage>                                             dry run only: look at a different stage
 //   POST ?key=<LEASING_FEES_KEY>&mode=run&board=monthly|weekly      marks the cards and emails the summary
+//   POST ?key=<LEASING_FEES_KEY>&mode=marktest&board=..&card=<id>   marks one ZZ TEST card only
 //
 // Env vars: LEASING_FEES_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD, and an Aptly key allowed on both
 // Delinquency boards and Leases (APTLY_NOTICE_CHECK_KEY, or one of the existing keys below).
@@ -220,6 +221,16 @@ exports.handler = async function (event) {
     if (q.mode === "access") return json(200, await access());
     if (q.mode === "dry") return json(200, await check(q.board, { stage: q.stage || "Grace Period" }));
     if (q.mode === "run" && event.httpMethod === "POST") return json(200, await check(q.board, { write: true }));
+    if (q.mode === "marktest" && event.httpMethod === "POST") {
+      // Marks one named test card through the same write the real run uses. Refuses anything not named ZZ TEST.
+      const board = BOARDS[q.board];
+      if (!board || !q.card) return json(400, { error: "board and card are required" });
+      const one = await aptly(`/api/board/${board.uuid}/${q.card}`);
+      const card = one.data !== undefined ? one.data : one;
+      if (!/^ZZ TEST/.test(String(card.name || ""))) return json(400, { error: "marktest only works on ZZ TEST cards", name: card.name });
+      await aptly(`/api/board/${board.uuid}`, { _id: q.card, [board.checkField]: "TEST", [board.verifiedField]: true });
+      return json(200, { marked: card.name });
+    }
     return json(400, { error: "mode must be access, dry, or POST run" });
   } catch (e) {
     return json(500, { error: String(e.message || e), diag: e.diag });
