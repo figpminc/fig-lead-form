@@ -22,8 +22,8 @@ const MAX_LOOKUP_FAILURE_RATE = 0.25;
 const CONCURRENCY = 8;
 
 const BOARDS = {
-  monthly: { uuid: "zri2mvxNeqRiTSBFr", name: "Delinquency", verifiedField: "", checkField: "" },
-  weekly: { uuid: "tDJGZjEH3JHdXBnpM", name: "Weekly Delinquency", verifiedField: "", checkField: "" }
+  monthly: { uuid: "zri2mvxNeqRiTSBFr", name: "Delinquency", verifiedField: "rDrSXSK45hHWXfGhk", checkField: "6wP55MJLKCQHKhDFf" },
+  weekly: { uuid: "tDJGZjEH3JHdXBnpM", name: "Weekly Delinquency", verifiedField: "2e8PdktzFkbG7KpAN", checkField: "53NjQwZEg7W42ebcG" }
 };
 
 const KATIE_USER_ID = "cDdtciekpJx5GvTCv";
