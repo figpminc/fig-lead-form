@@ -1,12 +1,13 @@
 // Called by the Aptly automation when Create Turn Project is checked on a Make Ready card.
 // For each issue picked in Turn Issues Needed, it creates a Rent Manager issue and a matching
-// Turn Work Orders card right away, so nobody waits for the overnight sync. The RM issue number is
-// saved on the card. A comment on the Make Ready card reports the result and blocks a second run.
+// Maintenance card right away, so nobody waits for the overnight sync. Cards get Source = Turn and no lease,
+// which keeps tenants out of the messages. The RM issue number is saved on the card.
+// A comment on the Make Ready card reports the result and blocks a second run.
 //
 //   POST /.netlify/functions/turn-project?key=<hook key>&card=<id>         create the project
 //   GET  /.netlify/functions/turn-project?key=<secret>&card=<id>&dry=1     shows the plan; changes nothing
-//   POST /.netlify/functions/turn-project?key=<hook key>&mode=close&card=<id>  a Turn Work Orders card reached Done or Cancelled:
-//        closes its RM issue (Done = Resolved, Cancelled = Unresolved). It sends the whole issue back, because a partial POST blanks fields.
+//   POST /.netlify/functions/turn-project?key=<hook key>&mode=close&card=<id>  a turn card on Maintenance reached Closed or Cancelled:
+//        closes its RM issue (Closed as Completed = Resolved, anything else = Unresolved). It sends the whole issue back, because a partial POST blanks fields.
 //   GET  /.netlify/functions/turn-project?key=<secret>&mode=rminfo&issue=<id>  RM statuses and one issue; changes nothing
 //
 // Env vars: VENDOR_WEBHOOK_KEY, APTLY_TURN_PROJECT_KEY or APTLY_OWNER_BILLING_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD
@@ -17,7 +18,7 @@ const { rmLogin } = require("../lib/leasing-fees-core");
 const API = "https://core-api.getaptly.com";
 const RM_BASE = process.env.RM_BASE_URL || "https://figpm.rmx.rentmanager.com";
 const MAKE_READY = "MoXvCc5Ee9YyrYEpF";
-const TURN_WO = "uYi6ZiD2WBu3ewPbx";
+const MAINTENANCE = "naaJQQsf9PmFgGKSS";
 const COMMENT_USER = "cDdtciekpJx5GvTCv";
 const MAINTENANCE_ADMIN = "udA4AurEsheRDJm8C";
 const MAINTENANCE_ADMIN_RM_USER = 13;
@@ -28,8 +29,8 @@ const STATUS_RESOLVED = 5;
 const STATUS_UNRESOLVED = 4;
 const LINK_EMBEDS = "ServiceManagerIssueLinkedProperties,ServiceManagerIssueLinkedUnits,ServiceManagerIssueLinkedTenants";
 
-const MR = { issuesNeeded: "QWsh3D2x5mfu86S4h", createProject: "rsMuAAqpwa44Ds7Q3", unit: "jqqnyPoY56AWzQjxk", building: "g9H2d86wZCropbHSj", lease: "G6BKdnweeTyjbef4u", shortName: "NvqDbqjDiLMYygm8k" };
-const WO = { vendorNotes: "Mgpg5xvwxkiCXJhX2", cancelNote: "GfwsHD94FBQPbzFKW", issueId: "QBLnTaXCbaCqJs7co", category: "r5pES4msj8YaC7wPJ", unit: "jW5Lvy4xhM6TJfuRe", building: "TKdovRPB9xJfYaP78", lease: "X5Et2msLcSY4QDNLu" };
+const MR = { issuesNeeded: "QWsh3D2x5mfu86S4h", createProject: "rsMuAAqpwa44Ds7Q3", unit: "jqqnyPoY56AWzQjxk", building: "g9H2d86wZCropbHSj", shortName: "NvqDbqjDiLMYygm8k" };
+const WO = { vendorNotes: "Mgpg5xvwxkiCXJhX2", cancelNote: "GfwsHD94FBQPbzFKW", issueId: "QBLnTaXCbaCqJs7co", category: "r5pES4msj8YaC7wPJ", unit: "jW5Lvy4xhM6TJfuRe", building: "TKdovRPB9xJfYaP78", source: "LT6kqomf2kJX3Crt9", okToEnter: "jpwB3n9ahgSjqgzae", closedReason: "9ihLuRv7A8QbwwBva" };
 
 // Same order and due-date offsets as the Turn - Standard template in Rent Manager.
 const ISSUES = [
@@ -153,7 +154,7 @@ async function run(cardId, dry) {
       });
       const entry = { title: i.title, rmId };
       created.push(entry);
-      const made = await aptly(`/api/board/${TURN_WO}`, {
+      const made = await aptly(`/api/board/${MAINTENANCE}`, {
         name: i.title,
         stage: "New",
         description: i.text,
@@ -163,7 +164,8 @@ async function run(cardId, dry) {
         [WO.category]: "Turnover",
         [WO.unit]: [unitLink],
         [WO.building]: links(card[MR.building]),
-        [WO.lease]: links(card[MR.lease])
+        [WO.source]: "Turn",
+        [WO.okToEnter]: true
       });
       entry.cardId = made && (made._id || made.cardId || made.id);
     }
@@ -172,7 +174,7 @@ async function run(cardId, dry) {
     await comment(cardId, `${MARKER} FAILED partway. Created so far: ${done}. Error: ${String(e.message || e).slice(0, 300)}`);
     throw e;
   }
-  await comment(cardId, `${MARKER} created: ${created.map(c => `${c.title} (RM #${c.rmId})`).join(", ")}. See the Turn Work Orders board.`);
+  await comment(cardId, `${MARKER} created: ${created.map(c => `${c.title} (RM #${c.rmId})`).join(", ")}. See the Turn Work tab on the Maintenance board.`);
   return { created, ...summary };
 }
 
@@ -183,16 +185,18 @@ const issueSummary = i => ({
 });
 
 async function closeIssue(cardId, dry) {
-  const card = await aptly(`/api/board/${TURN_WO}/${cardId}`);
+  const card = await aptly(`/api/board/${MAINTENANCE}/${cardId}`);
   const stage = card.stage;
-  if (stage !== "Done" && stage !== "Cancelled") return { skipped: `Card is in ${stage}, not Done or Cancelled` };
+  if (stage !== "Closed" && stage !== "Cancelled") return { skipped: `Card is in ${stage}, not Closed or Cancelled` };
+  if (card[WO.source] !== "Turn") return { skipped: "Card is not a turn card" };
   const issueId = Number(card[WO.issueId]);
   if (!issueId) return { skipped: "Card has no Service Manager Issue ID" };
   try {
     const session = await rmLogin();
     const before = await rmGet(session, `ServiceManagerIssues/${issueId}?embeds=${LINK_EMBEDS}`);
     if (before.IsClosed) return { skipped: `RM issue ${issueId} is already closed`, before: issueSummary(before) };
-    const done = stage === "Done";
+    const reason = String(card[WO.closedReason] || "");
+    const done = stage === "Closed" && (!reason || reason === "Completed");
     const note = String((done ? card[WO.vendorNotes] : card[WO.cancelNote]) || "").trim();
     // RM refuses a close date earlier than the issue's open date, including earlier the same day.
     const now = new Date().toLocaleString("sv-SE", { timeZone: "America/New_York" }).replace(" ", "T");
@@ -204,7 +208,7 @@ async function closeIssue(cardId, dry) {
       IsClosed: true,
       CloseDate: closeDate,
       AssignedCloseDate: closeDate,
-      Resolution: before.Resolution || note || (done ? "Completed on the Turn Work Orders board in Aptly." : "Cancelled on the Turn Work Orders board in Aptly.")
+      Resolution: before.Resolution || note || (done ? "Completed on the Maintenance board in Aptly." : "Not completed. Closed on the Maintenance board in Aptly.")
     };
     if (dry) return { dry: true, before: issueSummary(before), wouldSet: { StatusID: update.StatusID, IsClosed: true, CloseDate: update.CloseDate, Resolution: update.Resolution } };
     const res = await fetch(`${RM_BASE}/api/ServiceManagerIssues?embeds=${LINK_EMBEDS}`, {
@@ -217,7 +221,7 @@ async function closeIssue(cardId, dry) {
     const after = await rmGet(session, `ServiceManagerIssues/${issueId}?embeds=${LINK_EMBEDS}`);
     return { closed: issueId, before: issueSummary(before), after: issueSummary(after) };
   } catch (e) {
-    await comment(cardId, `Could not close RM issue ${issueId}: ${String(e.message || e).slice(0, 300)}. Close it in Rent Manager.`, TURN_WO);
+    await comment(cardId, `Could not close RM issue ${issueId}: ${String(e.message || e).slice(0, 300)}. Close it in Rent Manager.`, MAINTENANCE);
     throw e;
   }
 }
@@ -237,7 +241,7 @@ exports.handler = async function (event) {
     }
     if (q.mode === "access") {
       const out = {};
-      for (const b of [MAKE_READY, TURN_WO]) {
+      for (const b of [MAKE_READY, MAINTENANCE]) {
         try { await aptly(`/api/board/${b}/list`, { page: 1, pageSize: 1 }); out[b] = "ok"; } catch (e) { out[b] = String(e.message).slice(0, 120); }
       }
       return json(200, out);
