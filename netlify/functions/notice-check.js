@@ -71,11 +71,13 @@ async function pool(items, worker) {
   return out;
 }
 
-const tenantIdFromLease = lease => {
-  const refs = (lease && lease.references) || [];
-  const ref = refs.find(r => r.source === "rentmanager" && r.type === "tenant");
-  return ref ? ref.value : (lease && lease.rentmanagerTenantId) || null;
-};
+// The Aptly lease card holds the Rent Manager lease ID; Rent Manager says which tenant is on that lease.
+async function rmTenantForLease(session, rmLeaseId) {
+  const res = await fetch(`${RM_BASE}/api/Leases/${rmLeaseId}?fields=LeaseID,TenantID`, { headers: session.headers });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Rent Manager lease ${rmLeaseId}: ${res.status} ${text.slice(0, 120)}`);
+  return JSON.parse(text).TenantID || null;
+}
 
 // The only place a notice decision is made. Anything uncertain is sent for review instead of a notice.
 function decide({ balance, tenantId, error }) {
@@ -112,7 +114,9 @@ async function check(boardKey, { stage = "Grace Period", write = false } = {}) {
     try {
       if (!row.leaseId) throw new Error("no lease linked to this card");
       const lease = await aptly(`/api/board/lease/${row.leaseId}`);
-      row.tenantId = tenantIdFromLease(lease.data !== undefined ? lease.data : lease);
+      const leaseCard = lease.data !== undefined ? lease.data : lease;
+      if (!leaseCard.rentmanagerId) throw new Error("lease card has no Rent Manager lease ID");
+      row.tenantId = await rmTenantForLease(session, leaseCard.rentmanagerId);
       if (row.tenantId) row.balance = await rmBalance(session, row.tenantId);
     } catch (e) { row.error = String(e.message || e).slice(0, 160); }
     return { ...row, ...decide(row) };
