@@ -18,3 +18,7 @@ schedule = "0 14 1 * *"
 [functions."ruby-match-scheduled"]
 # every 5 minutes
 schedule = "*/5 * * * *"
+
+[functions."notice-check-scheduled"]
+# daily at 13:00 UTC (8 AM EST / 9 AM EDT); the function only acts on the 6th and on Thursdays
+schedule = "0 13 * * *"
