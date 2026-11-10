@@ -1,26 +1,30 @@
 // Receives Blanket's signed-owner webhooks (sent once, when an item is created in a hand-off
 // pipeline, i.e. when an owner lead hits Close Won) and creates the matching Aptly card:
-//   full management (default)  → Owner Onboarding board
+//   full management (default)  → Owner Leads card, moved to Agreement Signed. Aptly's copy rules
+//                                then create the Owner Onboarding and New Property Onboarding cards,
+//                                the same way as for an owner signed in Aptly.
 //   ?route=leasing             → Property Marketing board (leasing-only owners)
 //
 // Env vars (Netlify → Site configuration → Environment variables):
-//   APTLY_ONBOARDING_KEY   API key from Aptly's Owner Onboarding board
+//   APTLY_ONBOARDING_KEY   Aptly API token "Blanket"; must include the Owner Leads board
 //   APTLY_MARKETING_KEY    API key from Aptly's Property Marketing board
 //   ONBOARDING_WEBHOOK_KEY shared secret; Blanket's webhook URL must include ?key=<this value>
 
 const OWNER_TYPE_ID = "QQD9gimh4A4yCGZFw";     // Aptly contact type: Owner
 const API = "https://core-api.getaptly.com";
+const SIGNED = "Agreement Signed";
 
 const ROUTES = {
   onboarding: {
-    label: "Owner Onboarding",
-    boardId: "vwTdY5uXCDzDsjGj4",
-    contactField: "QWh8sNhgsqEd7H5J8",          // Contact (person)
-    stage: "Property Type Check",
+    label: "Owner Leads",
+    boardId: "emGXMwnLubrAvhKt6",
+    contactField: "contact",                    // Contact (person)
+    stage: "Agreement Sent",                    // created here, then moved to Agreement Signed
+    moveTo: SIGNED,                             // a real stage change is what the copy rules look for
     keyEnv: "APTLY_ONBOARDING_KEY",
     dedupe: true,
     source: "Blanket: signed owner (Owner Leads → Close Won)",
-    extra: {}
+    extra: { tDPZGmAhTyapSxvqm: "Full Management" }  // Service Type (select fields take the label)
   },
   leasing: {
     label: "Property Marketing",
@@ -66,8 +70,19 @@ exports.handler = async function (event) {
 
   const headers = { "Content-Type": "application/json", "x-token": apiKey };
 
+  // Moves a card to a new stage (and sets any extra fields) through the board's create-or-update endpoint.
+  const moveCard = async (cardId) => {
+    const res = await fetch(`${API}/api/board/${BOARD_ID}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ _id: cardId, stage: route.moveTo, ...route.extra })
+    });
+    if (!res.ok) throw new Error(`Aptly stage move failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 300)}`);
+  };
+
   try {
-    // 1. Skip if this owner already has an Owner Onboarding card (protects against retries).
+    // 1. If this owner already has a card on the board, don't make a second one (protects against retries).
+    //    An existing Owner Leads card that isn't signed yet is moved to Agreement Signed instead.
     if (route.dedupe && email) {
       const listRes = await fetch(`${API}/api/board/${BOARD_ID}/list`, {
         method: "POST",
@@ -76,7 +91,15 @@ exports.handler = async function (event) {
       });
       if (listRes.ok) {
         const list = await listRes.json().catch(() => ({}));
-        if ((list.count || (list.data || []).length) > 0) {
+        const existing = (list.data || [])[0];
+        if (existing || list.count > 0) {
+          const stage = existing && (existing.stage || existing.Stage);
+          const existingId = existing && (existing._id || existing.id);
+          if (route.moveTo && existingId && stage !== route.moveTo) {
+            await moveCard(existingId);
+            console.log(`${route.label} card ${existingId} moved to ${route.moveTo} for`, email);
+            return json(200, { success: true, moved: existingId });
+          }
           console.log(`${route.label} card already exists for`, email);
           return json(200, { skipped: "card already exists" });
         }
@@ -127,6 +150,17 @@ exports.handler = async function (event) {
       return json(502, { error: "Aptly rejected the card" });
     }
     console.log(`${route.label} card created:`, JSON.stringify(cardOut));
+
+    // 4. Move it to Agreement Signed, which starts Owner Onboarding and New Property Onboarding.
+    if (route.moveTo) {
+      const newId = cardOut._id || (cardOut.data && cardOut.data._id) || cardOut.id;
+      if (!newId) {
+        console.error("Card created but no id returned; move it to", route.moveTo, "by hand");
+        return json(502, { error: "Card created without an id" });
+      }
+      await moveCard(newId);
+      console.log(`${route.label} card ${newId} moved to ${route.moveTo}`);
+    }
     return json(200, { success: true });
 
   } catch (err) {
