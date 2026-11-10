@@ -13,6 +13,7 @@
 const OWNER_TYPE_ID = "QQD9gimh4A4yCGZFw";     // Aptly contact type: Owner
 const API = "https://core-api.getaptly.com";
 const SIGNED = "Agreement Signed";
+const SIGNED_DATE = "9rdyimyNKku5uRcFf";           // Owner Leads "Agreement Signed Date"; the copy rules key on it
 
 const ROUTES = {
   onboarding: {
@@ -20,7 +21,7 @@ const ROUTES = {
     boardId: "emGXMwnLubrAvhKt6",
     contactField: "contact",                    // Contact (person)
     stage: "Agreement Sent",                    // created here, then moved to Agreement Signed
-    moveTo: SIGNED,                             // a real stage change is what the copy rules look for
+    moveTo: SIGNED,                             // with Agreement Signed Date set, the copy rules pick it up
     keyEnv: "APTLY_ONBOARDING_KEY",
     dedupe: true,
     source: "Blanket: signed owner (Owner Leads → Close Won)",
@@ -75,7 +76,7 @@ exports.handler = async function (event) {
     const res = await fetch(`${API}/api/board/${BOARD_ID}`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ _id: cardId, stage: route.moveTo, ...route.extra })
+      body: JSON.stringify({ _id: cardId, stage: route.moveTo, [SIGNED_DATE]: new Date().toISOString(), ...route.extra })
     });
     if (!res.ok) throw new Error(`Aptly stage move failed: ${res.status} ${(await res.text().catch(() => "")).slice(0, 300)}`);
   };
@@ -95,7 +96,7 @@ exports.handler = async function (event) {
         if (existing || list.count > 0) {
           const stage = existing && (existing.stage || existing.Stage);
           const existingId = existing && (existing._id || existing.id);
-          if (route.moveTo && existingId && stage !== route.moveTo) {
+          if (route.moveTo && existingId && (stage !== route.moveTo || !existing[SIGNED_DATE])) {
             await moveCard(existingId);
             console.log(`${route.label} card ${existingId} moved to ${route.moveTo} for`, email);
             return json(200, { success: true, moved: existingId });
