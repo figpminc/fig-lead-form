@@ -1,5 +1,6 @@
 // Scheduled run of the live Rent Manager check (schedule in netlify.toml).
-// Thursdays: Weekly Delinquency (Second Creek). The 6th: Delinquency. Both can apply on the same day.
+// Thursdays: Weekly Delinquency, Second Creek cards. Mondays: Weekly Delinquency, Trailblazer cards.
+// The 6th: Delinquency. More than one can apply on the same day.
 // If a run fails nobody is marked, so no notices go out, and Katie and the Account Manager are emailed.
 
 const { check, sendEmail } = require("./notice-check");
@@ -12,6 +13,7 @@ exports.handler = async function () {
   const boards = [];
   if (now.getDate() === 6) boards.push("monthly");
   if (now.getDay() === 4) boards.push("weekly");
+  if (now.getDay() === 1) boards.push("trailblazer");
   let failed = false;
   for (const board of boards) {
     try {

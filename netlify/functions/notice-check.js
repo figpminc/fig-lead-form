@@ -4,9 +4,9 @@
 // The Aptly rules "Stage Change: 14 Day Notice" and "Stage Change: 5 Day Notice" fire on that mark.
 //
 //   GET  ?key=<LEASING_FEES_KEY>&mode=access                        tests the Aptly key and RM access; changes nothing
-//   GET  ?key=<LEASING_FEES_KEY>&mode=dry&board=monthly|weekly      shows what would be marked; changes nothing
+//   GET  ?key=<LEASING_FEES_KEY>&mode=dry&board=monthly|weekly|trailblazer      shows what would be marked; changes nothing
 //        &stage=<stage>                                             dry run only: look at a different stage
-//   POST ?key=<LEASING_FEES_KEY>&mode=run&board=monthly|weekly      marks the cards and emails the summary
+//   POST ?key=<LEASING_FEES_KEY>&mode=run&board=monthly|weekly|trailblazer      marks the cards and emails the summary
 //   POST ?key=<LEASING_FEES_KEY>&mode=marktest&board=..&card=<id>   marks one ZZ TEST card only
 //
 // Env vars: LEASING_FEES_KEY, RM_USERNAME, RM_AUTOMATION_PASSWORD, and an Aptly key allowed on both
@@ -17,6 +17,7 @@ const { rmLogin } = require("../lib/leasing-fees-core");
 const API = "https://core-api.getaptly.com";
 const RM_BASE = process.env.RM_BASE_URL || "https://figpm.rmx.rentmanager.com";
 const LEASE_FIELD = "ms74BaSrWKde9muY7";
+const UNIT_FIELD = "YwXgjyPPMvdCAR3K6";
 const COMMITTED_FIELD = "aBbW6qnJAbq6Pc2je";
 const MIN_NOTICE_BALANCE = 100; // under $100 goes through Small Balance Owed, not a notice
 const MAX_LOOKUP_FAILURE_RATE = 0.25;
@@ -24,7 +25,9 @@ const CONCURRENCY = 8;
 
 const BOARDS = {
   monthly: { uuid: "zri2mvxNeqRiTSBFr", name: "Delinquency", verifiedField: "rDrSXSK45hHWXfGhk", checkField: "6wP55MJLKCQHKhDFf" },
-  weekly: { uuid: "tDJGZjEH3JHdXBnpM", name: "Weekly Delinquency", verifiedField: "2e8PdktzFkbG7KpAN", checkField: "53NjQwZEg7W42ebcG" }
+  // Weekly board, split by property: Second Creek runs Thursdays, Trailblazer (rent charged Saturdays) runs Mondays.
+  weekly: { uuid: "tDJGZjEH3JHdXBnpM", name: "Weekly Delinquency (Second Creek)", verifiedField: "2e8PdktzFkbG7KpAN", checkField: "53NjQwZEg7W42ebcG", units: u => !/Trailblazer/i.test(u) },
+  trailblazer: { uuid: "tDJGZjEH3JHdXBnpM", name: "Weekly Delinquency (Trailblazer)", verifiedField: "2e8PdktzFkbG7KpAN", checkField: "53NjQwZEg7W42ebcG", units: u => /Trailblazer/i.test(u) }
 };
 
 const KATIE_USER_ID = "cDdtciekpJx5GvTCv";
@@ -96,13 +99,14 @@ async function listStage(board, stage) {
     cards.push(...(out.data || []));
     if ((page + 1) * (out.pageSize || 500) >= (out.count || 0)) break;
   }
-  return cards.filter(c => (c.stage || c.Stage) === stage && !c.archived);
+  const unitName = c => (Array.isArray(c[UNIT_FIELD]) ? c[UNIT_FIELD] : []).map(u => u.name).join(" ") || String(c.name || "");
+  return cards.filter(c => (c.stage || c.Stage) === stage && !c.archived && (!board.units || board.units(unitName(c))));
 }
 
 async function check(boardKey, { stage = "Grace Period", write = false } = {}) {
   const started = Date.now();
   const board = BOARDS[boardKey];
-  if (!board) throw new Error("board must be monthly or weekly");
+  if (!board) throw new Error("board must be monthly, weekly or trailblazer");
   if (write && stage !== "Grace Period") throw new Error("Only Grace Period cards can be marked");
   if (write && (!board.verifiedField || !board.checkField)) throw new Error(`${board.name} fields are not set in notice-check.js`);
 
