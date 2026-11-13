@@ -9,6 +9,29 @@
 
 const { run, checkKpis } = require("../lib/ninety-scorecard-core");
 
+// Describes the token without revealing it: length, stray characters, and (if it is a JWT) its issue/expiry dates.
+function tokenShape(t) {
+  if (!t) return { present: false };
+  const out = {
+    present: true,
+    length: t.length,
+    trimmedLength: t.trim().length,
+    startsWithBearer: /^\s*bearer\s/i.test(t),
+    hasQuotes: /["']/.test(t),
+    hasWhitespaceInside: /\s/.test(t.trim()),
+    dots: (t.match(/\./g) || []).length,
+    looksLikeJwt: /^eyJ/.test(t.trim().replace(/^bearer\s+/i, ""))
+  };
+  if (out.looksLikeJwt && out.dots === 2) {
+    try {
+      const p = JSON.parse(Buffer.from(t.trim().replace(/^bearer\s+/i, "").split(".")[1], "base64url").toString());
+      if (p.iat) out.issued = new Date(p.iat * 1000).toISOString();
+      if (p.exp) { out.expires = new Date(p.exp * 1000).toISOString(); out.expired = p.exp * 1000 < Date.now(); }
+    } catch (e) { out.payloadReadable = false; }
+  }
+  return out;
+}
+
 exports.handler = async function (event) {
   const json = (statusCode, body) => ({ statusCode, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body, null, 2) });
   const q = event.queryStringParameters || {};
@@ -16,7 +39,11 @@ exports.handler = async function (event) {
   if (!secret || q.key !== secret) return json(401, { error: "Unauthorized" });
 
   try {
-    if (q.mode === "check") return json(200, { kpis: await checkKpis() });
+    if (q.mode === "check") {
+      const token = tokenShape(process.env.NINETY_TOKEN);
+      try { return json(200, { token, kpis: await checkKpis() }); }
+      catch (e) { return json(500, { token, error: String(e.message || e) }); }
+    }
     if (q.mode === "dryrun") return json(200, await run({ week: q.week, write: false, sendEmail: false }));
     if (q.mode === "post") return json(200, await run({ week: q.week }));
     return json(400, { error: "mode must be check, dryrun or post" });
