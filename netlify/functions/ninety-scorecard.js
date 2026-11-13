@@ -20,7 +20,10 @@ function tokenShape(t) {
     hasQuotes: /["']/.test(t),
     hasWhitespaceInside: /\s/.test(t.trim()),
     dots: (t.match(/\./g) || []).length,
-    looksLikeJwt: /^eyJ/.test(t.trim().replace(/^bearer\s+/i, ""))
+    looksLikeJwt: /^eyJ/.test(t.trim().replace(/^bearer\s+/i, "")),
+    // the pieces between spaces/line breaks: their lengths and whether a piece is a plain word (a label)
+    pieces: t.trim().split(/\s+/).map(p => ({ length: p.length, plainWord: /^[A-Za-z:]+$/.test(p) })),
+    breakKinds: [...new Set((t.trim().match(/\s/g) || []).map(c => ({ " ": "space", "\n": "newline", "\r": "return", "\t": "tab" }[c] || "other")))]
   };
   if (out.looksLikeJwt && out.dots === 2) {
     try {
@@ -28,6 +31,18 @@ function tokenShape(t) {
       if (p.iat) out.issued = new Date(p.iat * 1000).toISOString();
       if (p.exp) { out.expires = new Date(p.exp * 1000).toISOString(); out.expired = p.exp * 1000 < Date.now(); }
     } catch (e) { out.payloadReadable = false; }
+  }
+  return out;
+}
+
+// Tries the token as-is, with all whitespace removed, and as just its last piece; reports Ninety's answer for each.
+async function tryVariants(t) {
+  if (!t) return [];
+  const v = { asIs: t.trim(), noWhitespace: t.replace(/\s+/g, ""), lastPiece: t.trim().split(/\s+/).pop(), longestPiece: t.trim().split(/\s+/).sort((a, b) => b.length - a.length)[0] };
+  const out = {};
+  for (const [name, tok] of Object.entries(v)) {
+    const res = await fetch("https://api.public.ninety.io/v1/scorecard/kpis/company?limit=1", { headers: { Authorization: `Bearer ${tok}` } }).catch(e => ({ status: String(e.message || e) }));
+    out[name] = res.status;
   }
   return out;
 }
@@ -41,6 +56,7 @@ exports.handler = async function (event) {
   try {
     if (q.mode === "check") {
       const token = tokenShape(process.env.NINETY_TOKEN);
+      token.variants = await tryVariants(process.env.NINETY_TOKEN);
       try { return json(200, { token, kpis: await checkKpis() }); }
       catch (e) { return json(500, { token, error: String(e.message || e) }); }
     }
